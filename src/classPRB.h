@@ -8,12 +8,12 @@
 #define T_OIN       0x00
 #define P_OIN       0x00 
 #define MOSFET      0x00 //I-GP
-#define VE_no      0x00
+#define VE_no       0x00
 #define VO_noC      0x00
 #define IE_nc       0x00
 #define IO_ncC      0x00
 
-enum state
+enum systemState
 {
     IDLE,
     TEST,
@@ -30,8 +30,10 @@ enum state
 class classPRB
 {
 private:
-    state status;
+    systemState state;
     int time_sart_sequence;
+    int time_start_sq;
+    int stage_sq;
 public:
     classPRB(/* args */);
     ~classPRB();
@@ -44,10 +46,15 @@ public:
     float read_temperature(int sensor);
     bool check_pressure(int sensor, float threshold);
 
+    void set_time_start_sq(int time);
+    int get_time_start_sq();
+
     bool ignition_sq1(int time);
     bool ignition_sq2(int time);
     bool ignition_sq3(int time);
     bool ignition_sq4(int time);
+
+    void manual_aboart();
 };
 
 
