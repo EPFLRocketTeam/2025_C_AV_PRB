@@ -8,8 +8,9 @@ private:
     int time_sart_sequence;
     int time_start_sq;
     int stage_sq;
+    bool ignition_sq_ready;
 public:
-    PRBComputer(/* args */);
+    PRBComputer(systemState);
     ~PRBComputer();
 
     //valve and motor control

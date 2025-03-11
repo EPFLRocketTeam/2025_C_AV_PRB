@@ -18,6 +18,7 @@
 #define IO_ncC      5
 #define SDA_SENSOR  25
 #define SCL_SENSOR  24
+#define RESET       9
 
 enum systemState
 {

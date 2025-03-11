@@ -1,9 +1,12 @@
 // Last update: 11/03/2025
 #include "PRBComputer.h"
 
-PRBComputer::PRBComputer(/* args */)
+PRBComputer::PRBComputer(systemState state)
 {
-    state = IDLE;
+    state = state;
+    time_start_sq = 0;
+    stage_sq = 0;
+    ignition_sq_ready = false;
 }
 
 PRBComputer::~PRBComputer()
@@ -19,12 +22,36 @@ void PRBComputer::control_motor_angle(int motor, int angle)
 
 void PRBComputer::open_valve(int valve)
 {
-    //open valve
+    switch (valve)
+    {
+    case VE_no:
+    case VO_noC:
+    case IE_nc:
+    case IO_ncC:
+    case MOSFET:
+        digitalWrite(valve, HIGH);
+        break;
+
+    default:
+        break;
+    }
 }
 
 void PRBComputer::close_valve(int valve)
 {
-    //close valve
+    switch (valve)
+    {
+    case VE_no:
+    case VO_noC:
+    case IE_nc:
+    case IO_ncC:
+    case MOSFET:
+        digitalWrite(valve, LOW);
+        break;
+    
+    default:
+        break;
+    }
 }
 
 
@@ -116,6 +143,7 @@ bool PRBComputer::ignition_sq1(int time)
         close_valve(IO_ncC);
         control_motor_angle(ME_b, 30);
         control_motor_angle(MO_bC, 0);
+        open_valve(MOSFET);
         stage_sq += 1;
     }
 
@@ -213,6 +241,7 @@ bool PRBComputer::ignition_sq3(int time)
         control_motor_angle(ME_b, 90);
         close_valve(IO_ncC);
         close_valve(IE_nc);
+        close_valve(MOSFET);
         stage_sq += 1;
     }
 
