@@ -1,19 +1,19 @@
+// 
 #include <Arduino.h>
+#include <Wire.h>
+#include "constant.h"
 #include "PRBComputer.h"
 
-// put function declarations here:
-int myFunction(int, int);
-
 void setup() {
-  // put your setup code here, to run once:
-  int result = myFunction(2, 3);
+
+  //begin I2C communication with spine
+  Wire1.begin(SLAVE_ADDR);
+
+  //begin I2C communication with sensors
+  Wire2.begin();
+  
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
-}
 
-// put function definitions here:
-int myFunction(int x, int y) {
-  return x + y;
 }

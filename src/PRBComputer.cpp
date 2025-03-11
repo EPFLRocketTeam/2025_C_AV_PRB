@@ -1,3 +1,4 @@
+// Last update: 11/03/2025
 #include "PRBComputer.h"
 
 PRBComputer::PRBComputer(/* args */)
@@ -27,7 +28,16 @@ void PRBComputer::close_valve(int valve)
 
 float PRBComputer::read_pressure(int sensor)
 {
-    //read pressure
+    if (sensor == P_OIN || sensor == T_OIN || sensor == T_EIN)
+    {
+        //read analog pressure
+    } else if (sensor == EIN || sensor == CIG || sensor == CCC)
+    {
+        //read I2C pressure
+    } else {
+        //error
+    }
+    
     return 0.0;
 }
 
