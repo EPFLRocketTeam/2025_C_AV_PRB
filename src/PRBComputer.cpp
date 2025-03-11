@@ -1,6 +1,8 @@
 // Last update: 11/03/2025
 #include "PRBComputer.h"
 
+#define TEST_WITHOUT_PRESSURE
+
 PRBComputer::PRBComputer(systemState state)
 {
     state = state;
@@ -58,14 +60,24 @@ void PRBComputer::close_valve(int valve)
 // ========= sensor reading =========
 float PRBComputer::read_pressure(int sensor)
 {
-    if (sensor == P_OIN || sensor == T_OIN || sensor == T_EIN)
+    switch (sensor)
     {
+    case P_OIN:
+    case T_OIN:
+    case T_EIN:
         //read analog pressure
-    } else if (sensor == EIN || sensor == CIG || sensor == CCC)
-    {
+        break;
+
+        //to work on : how to differenciat between the 3 sensors
+    case EIN:
+    case CIG:
+    case CCC:
         //read I2C pressure
-    } else {
+        break;
+    
+    default:
         //error
+        break;
     }
     
     return 0.0;
@@ -173,6 +185,11 @@ bool PRBComputer::ignition_sq1(int time)
     //change state
     if (time - time_start_sq >= 15200 && stage_sq == 5)
     {
+        #ifdef TEST_WITHOUT_PRESSURE
+        state = IGNITION_SQ2;
+        stage_sq = 0;
+        return true;
+        #else
         if (check_pressure(CIG, 15))
         {
             state = IGNITION_SQ2;
@@ -185,6 +202,7 @@ bool PRBComputer::ignition_sq1(int time)
             stage_sq = 0;
             return false;
         }
+        #endif
     }
 
     return true;
@@ -209,6 +227,11 @@ bool PRBComputer::ignition_sq2(int time)
     //change state
     if (time - time_start_sq >= 200 && stage_sq == 1)
     {
+        #ifdef TEST_WITHOUT_PRESSURE
+        state = IGNITION_SQ3;
+        stage_sq = 0;
+        return true;
+        #else
         if (check_pressure(CCC, 2))
         {
             state = IGNITION_SQ3;
@@ -221,6 +244,7 @@ bool PRBComputer::ignition_sq2(int time)
             stage_sq = 0;
             return false;
         }
+        #endif
     }
 
     return true;
@@ -250,6 +274,11 @@ bool PRBComputer::ignition_sq3(int time)
     //change state
     if (time - time_start_sq >= 100 && stage_sq == 1)
     {
+        #ifdef TEST_WITHOUT_PRESSURE
+        state = IGNITION_SQ4;
+        stage_sq = 0;
+        return true;
+        #else
         if (check_pressure(CCC, 25))
         {
             state = IGNITION_SQ4;
@@ -262,6 +291,7 @@ bool PRBComputer::ignition_sq3(int time)
             stage_sq = 0;
             return false;
         }
+        #endif
     }
 
     return true;
