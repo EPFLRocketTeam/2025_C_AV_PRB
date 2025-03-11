@@ -11,6 +11,7 @@ PRBComputer::~PRBComputer()
     state = ERROR;
 }
 
+// ========= valve and motor control =========
 void PRBComputer::control_motor_angle(int motor, int angle)
 {
     //control motor
@@ -26,6 +27,8 @@ void PRBComputer::close_valve(int valve)
     //close valve
 }
 
+
+// ========= sensor reading =========
 float PRBComputer::read_pressure(int sensor)
 {
     if (sensor == P_OIN || sensor == T_OIN || sensor == T_EIN)
@@ -49,7 +52,17 @@ float PRBComputer::read_temperature(int sensor)
 
 bool PRBComputer::check_pressure(int sensor, float threshold)
 {
-    //check pressure
+    if (sensor == P_OIN)
+    {
+        //read analog pressure
+    } else if (sensor == EIN || sensor == CIG || sensor == CCC)
+    {
+        //read I2C pressure
+    } else
+    {
+        //error
+    }
+    
     return false;
 }
 
@@ -58,11 +71,20 @@ void PRBComputer::set_time_start_sq(int time)
     time_start_sq = time;
 }
 
+
+// ========= getter =========
 int PRBComputer::get_time_start_sq()
 {
     return time_start_sq;
 }
 
+int PRBComputer::get_stage_sq()
+{
+    return stage_sq;
+}
+
+
+// ========= ignition sequences =========
 bool PRBComputer::ignition_sq1(int time)
 {
     //ignition sequence 1 (ISQ1)
@@ -132,6 +154,7 @@ bool PRBComputer::ignition_sq1(int time)
         else
         {
             state = ABORT;
+            stage_sq = 0;
             return false;
         }
     }
@@ -145,11 +168,32 @@ bool PRBComputer::ignition_sq2(int time)
 
     //MO-b to 40°
     //ME-b to 40°
+    if (stage_sq == 0)
+    {
+        control_motor_angle(MO_bC, 40);
+        control_motor_angle(ME_b, 40);
+        stage_sq += 1;
+    }
 
 
     //after 200ms
     //check pressure : P_CCC > 2 bar
     //change state
+    if (time - time_start_sq >= 200 && stage_sq == 1)
+    {
+        if (check_pressure(CCC, 2))
+        {
+            state = IGNITION_SQ3;
+            stage_sq = 0;
+            return true;
+        }
+        else
+        {
+            state = ABORT;
+            stage_sq = 0;
+            return false;
+        }
+    }
 
     return true;
 }
@@ -163,10 +207,33 @@ bool PRBComputer::ignition_sq3(int time)
     //Close : IO-ncC
     //Close : IE-nc
     //Deactivate : MOSFET (I-GP)
+    if (stage_sq == 0)
+    {
+        control_motor_angle(MO_bC, 90);
+        control_motor_angle(ME_b, 90);
+        close_valve(IO_ncC);
+        close_valve(IE_nc);
+        stage_sq += 1;
+    }
 
     //after 100ms
     //check pressure : P_CCC > 25 bar
     //change state
+    if (time - time_start_sq >= 100 && stage_sq == 1)
+    {
+        if (check_pressure(CCC, 25))
+        {
+            state = IGNITION_SQ4;
+            stage_sq = 0;
+            return true;
+        }
+        else
+        {
+            state = ABORT;
+            stage_sq = 0;
+            return false;
+        }
+    }
 
     return true;
 }
@@ -177,23 +244,51 @@ bool PRBComputer::ignition_sq4(int time)
 
     //after 15s
     //MO-b to 0°
+    if (time - time_start_sq >= 15000 && stage_sq == 0)
+    {
+        control_motor_angle(MO_bC, 0);
+        stage_sq += 1;
+    }
 
 
     //after 20s
     //ME-b to 0°
+    if (time - time_start_sq >= 20000 && stage_sq == 1)
+    {
+        control_motor_angle(ME_b, 0);
+        stage_sq += 1;
+    }
 
 
     //after 22s
     //MO-b to 90°
+    if (time - time_start_sq >= 22000 && stage_sq == 2)
+    {
+        control_motor_angle(MO_bC, 90);
+        stage_sq += 1;
+    }
 
     
     //after 50s 
     //ME-b to 90°
+    if (time - time_start_sq >= 50000 && stage_sq == 3)
+    {
+        control_motor_angle(ME_b, 90);
+        stage_sq += 1;
+    }
 
     //after 100s
     //Open : VO-noC
     //Open : VE-no
     //change state
+    if (time - time_start_sq >= 100000 && stage_sq == 4)
+    {
+        open_valve(VO_noC);
+        open_valve(VE_no);
+        state = IDLE;
+        stage_sq = 0;
+        return true;
+    }
 
     return true;
 }
@@ -205,4 +300,11 @@ void PRBComputer::manual_aboart()
     //check pressure : P_CCC > 25 bar
     //MO-b to 0°
     //change state
+}
+
+
+// ========= send update =========
+void PRBComputer::send_update()
+{
+    //send update
 }

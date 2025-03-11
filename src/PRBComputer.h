@@ -35,6 +35,8 @@ public:
     bool ignition_sq4(int time);
 
     void manual_aboart();
+
+    void send_update();
 };
 
 
