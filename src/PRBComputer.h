@@ -27,7 +27,7 @@ enum systemState
     ERROR
 };
 
-class classPRB
+class PRBComputer
 {
 private:
     systemState state;
@@ -35,8 +35,8 @@ private:
     int time_start_sq;
     int stage_sq;
 public:
-    classPRB(/* args */);
-    ~classPRB();
+    PRBComputer(/* args */);
+    ~PRBComputer();
 
     //valve and motor control
     void control_motor_angle(int motor, int angle);

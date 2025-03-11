@@ -1,59 +1,59 @@
-#include "classPRB.h"
+#include "PRBComputer.h"
 
-classPRB::classPRB(/* args */)
+PRBComputer::PRBComputer(/* args */)
 {
     state = IDLE;
 }
 
-classPRB::~classPRB()
+PRBComputer::~PRBComputer()
 {
     state = ERROR;
 }
 
-void classPRB::control_motor_angle(int motor, int angle)
+void PRBComputer::control_motor_angle(int motor, int angle)
 {
     //control motor
 }
 
-void classPRB::open_valve(int valve)
+void PRBComputer::open_valve(int valve)
 {
     //open valve
 }
 
-void classPRB::close_valve(int valve)
+void PRBComputer::close_valve(int valve)
 {
     //close valve
 }
 
-float classPRB::read_pressure(int sensor)
+float PRBComputer::read_pressure(int sensor)
 {
     //read pressure
     return 0.0;
 }
 
-float classPRB::read_temperature(int sensor)
+float PRBComputer::read_temperature(int sensor)
 {
     //read temperature
     return 0.0;
 }
 
-bool classPRB::check_pressure(int sensor, float threshold)
+bool PRBComputer::check_pressure(int sensor, float threshold)
 {
     //check pressure
     return false;
 }
 
-void classPRB::set_time_start_sq(int time)
+void PRBComputer::set_time_start_sq(int time)
 {
     time_start_sq = time;
 }
 
-int classPRB::get_time_start_sq()
+int PRBComputer::get_time_start_sq()
 {
     return time_start_sq;
 }
 
-bool classPRB::ignition_sq1(int time)
+bool PRBComputer::ignition_sq1(int time)
 {
     //ignition sequence 1 (ISQ1)
 
@@ -129,7 +129,7 @@ bool classPRB::ignition_sq1(int time)
     return true;
 }
 
-bool classPRB::ignition_sq2(int time)
+bool PRBComputer::ignition_sq2(int time)
 {
     //ignition sequence 2 (ISQ2)
 
@@ -144,7 +144,7 @@ bool classPRB::ignition_sq2(int time)
     return true;
 }
 
-bool classPRB::ignition_sq3(int time)
+bool PRBComputer::ignition_sq3(int time)
 {
     //ignition sequence 3 (ISQ3)
 
@@ -161,7 +161,7 @@ bool classPRB::ignition_sq3(int time)
     return true;
 }
 
-bool classPRB::ignition_sq4(int time)
+bool PRBComputer::ignition_sq4(int time)
 {
     //ignition sequence 4 (ISQ4)
 
@@ -188,7 +188,7 @@ bool classPRB::ignition_sq4(int time)
     return true;
 }
 
-void classPRB::manual_aboart()
+void PRBComputer::manual_aboart()
 {
     //manual abort
 

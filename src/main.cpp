@@ -1,5 +1,5 @@
 #include <Arduino.h>
-#include "classPRB.h"
+#include "PRBComputer.h"
 
 // put function declarations here:
 int myFunction(int, int);
