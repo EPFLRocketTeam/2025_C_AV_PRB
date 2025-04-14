@@ -1,5 +1,8 @@
 // Last update: 11/03/2025
 #include "constant.h"
+#include "intranet_commands.h"
+#include "PTE7300_I2C.h"
+#include <Wire.h>
 
 class PRBComputer
 {
@@ -9,6 +12,8 @@ private:
     int time_start_sq;
     int stage_sq;
     bool ignition_sq_ready;
+    PTE7300_I2C my_sensor;
+    int16_t value_sensor;
 public:
     PRBComputer(systemState);
     ~PRBComputer();
@@ -41,5 +46,5 @@ public:
 };
 
 
-
+void selectI2CChannel(uint8_t channel); 
 

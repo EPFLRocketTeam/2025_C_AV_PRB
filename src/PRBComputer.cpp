@@ -1,6 +1,7 @@
 // Last update: 11/03/2025
 #include "PRBComputer.h"
 
+
 #define TEST_WITHOUT_PRESSURE
 
 PRBComputer::PRBComputer(systemState state)
@@ -60,6 +61,9 @@ void PRBComputer::close_valve(int valve)
 // ========= sensor reading =========
 float PRBComputer::read_pressure(int sensor)
 {
+    int i2cAddress = 0x00;
+    bool I2C = false;
+
     switch (sensor)
     {
     case P_OIN:
@@ -69,10 +73,19 @@ float PRBComputer::read_pressure(int sensor)
         break;
 
         //to work on : how to differenciat between the 3 sensors
-    case EIN:
-    case CIG:
-    case CCC:
-        //read I2C pressure
+    case EIN_CH:
+        selectI2CChannel(EIN_CH);
+        I2C = true;
+        break;
+
+    case CIG_CH:
+        selectI2CChannel(CIG_CH);
+        I2C = true;
+        break;
+
+    case CCC_CH:
+        selectI2CChannel(CCC_CH);
+        I2C = true;
         break;
     
     default:
@@ -80,12 +93,115 @@ float PRBComputer::read_pressure(int sensor)
         break;
     }
     
+    if (I2C)
+    {
+        i2cAddress = SENS_ADDR;
+        // Request data from the I2C device
+        // Wire2.beginTransmission(i2cAddress);
+        // Wire2.write(0x00); // Example: Command to request pressure data
+
+        if (my_sensor.isConnected()) {
+            value_sensor = my_sensor.readDSP_S();
+            Serial.print("Pressure: ");
+            Serial.println(value_sensor);
+        } else {
+            Serial.println("Sensor not connected");
+        }
+
+        // Wire2.endTransmission();
+
+        // // Read data from the I2C device
+        // Wire2.requestFrom(i2cAddress, 2); // Request 2 bytes of data
+        // if (Wire2.available() == 2)
+        // {
+        //     uint8_t msb = Wire2.read(); // Most significant byte
+        //     uint8_t lsb = Wire2.read(); // Least significant byte
+        //     int16_t rawPressure = (msb << 8) | lsb; // Combine bytes
+        //     return rawPressure / 100.0; // Convert to meaningful units (e.g., bar)
+        //}
+    }
+
     return 0.0;
 }
 
 float PRBComputer::read_temperature(int sensor)
 {
     //read temperature
+    int i2cAddress = 0x00;
+    bool I2C = false;
+    int value = 0.0;
+    float voltage = 0.0;
+    float temperature = 0.0;
+
+    switch (sensor)
+    {
+    case T_OIN:
+
+
+    case T_EIN:
+        //read analog temperature
+        value = analogRead(sensor);
+        Serial.print("Value: ");
+        Serial.println(value);
+        //convert the value to voltage 
+        voltage = (value * 3.3) / 4095.0; // Assuming a 12-bit ADC and 5V reference
+        Serial.print("Voltage: ");
+        Serial.println(voltage);
+        //convert the voltage to temperature
+        temperature = 0.2667 * (voltage * 1100.0 / (5-voltage) - 266.7); // Example conversion formula
+        Serial.print("Temperature: ");
+        Serial.println(temperature);
+        return temperature;
+        break;
+
+        //to work on : how to differenciat between the 3 sensors
+    case EIN_CH:
+        selectI2CChannel(EIN_CH);
+        I2C = true;
+        break;
+
+    case CIG_CH:
+        selectI2CChannel(CIG_CH);
+        I2C = true;
+        break;
+
+    case CCC_CH:
+        selectI2CChannel(CCC_CH);
+        I2C = true;
+        break;
+    
+    default:
+        //error
+        break;
+    }
+    
+    if (I2C)
+    {
+        i2cAddress = SENS_ADDR;
+        // Request data from the I2C device
+        // Wire2.beginTransmission(i2cAddress);
+        // Wire2.write(0x00); // Example: Command to request pressure data
+        // Wire2.endTransmission();
+
+        if (my_sensor.isConnected()) {
+            value_sensor = my_sensor.readDSP_T();
+            Serial.print("Temperature: ");
+            Serial.println(value_sensor);
+        } else {
+            Serial.println("Sensor not connected");
+        }
+
+        // Read data from the I2C device
+        // Wire2.requestFrom(i2cAddress, 2); // Request 2 bytes of data
+        // if (Wire2.available() == 2)
+        // {
+        //     uint8_t msb = Wire2.read(); // Most significant byte
+        //     uint8_t lsb = Wire2.read(); // Least significant byte
+        //     int16_t rawPressure = (msb << 8) | lsb; // Combine bytes
+        //     return rawPressure / 100.0; // Convert to meaningful units (e.g., bar)
+        // }
+    }
+
     return 0.0;
 }
 
@@ -94,9 +210,17 @@ bool PRBComputer::check_pressure(int sensor, float threshold)
     if (sensor == P_OIN)
     {
         //read analog pressure
-    } else if (sensor == EIN || sensor == CIG || sensor == CCC)
+    } else if (sensor == EIN_CH || sensor == CIG_CH || sensor == CCC_CH)
     {
-        //read I2C pressure
+        float pressure = read_pressure(sensor);
+        if (pressure > threshold)
+        {
+            return true;
+        }
+        else
+        {
+            return false;
+        }
     } else
     {
         //error
@@ -366,4 +490,11 @@ void PRBComputer::manual_aboart()
 void PRBComputer::send_update()
 {
     //send update
+}
+
+
+void selectI2CChannel(uint8_t channel) {
+    Wire2.beginTransmission(MUX_ADDR);
+    Wire2.write(1 << channel); // Enable only the selected channel
+    Wire2.endTransmission();
 }
