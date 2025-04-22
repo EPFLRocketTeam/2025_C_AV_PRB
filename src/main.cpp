@@ -46,24 +46,26 @@ PTE7300_I2C mySensor; // attach sensor
 int16_t DSP_T1;
 
 void loop() {
-  float temp = 0.0;
-  float press = 0.0;
-
-  temp = computer.read_temperature(EIN_CH);
-  Serial.print("Temperature EIN: ");
-  Serial.print(temp);
-  Serial.print(" °C\t");
-  press = computer.read_pressure(EIN_CH);
-  Serial.print("Pressure EIN: ");
-  Serial.println(press);
-
-  temp = computer.read_temperature(CCC_CH);
-  Serial.print("Temperature CCC: ");
-  Serial.print(temp);
-  Serial.print(" °C\t");
-  press = computer.read_pressure(CCC_CH);
-  Serial.print("Pressure CCC: ");
-  Serial.println(press);
+  
 
   delay(100);
 }
+
+// float temp = 0.0;
+//   float press = 0.0;
+
+//   temp = computer.read_temperature(EIN_CH);
+//   Serial.print("Temperature EIN: ");
+//   Serial.print(temp);
+//   Serial.print(" °C\t");
+//   press = computer.read_pressure(EIN_CH);
+//   Serial.print("Pressure EIN: ");
+//   Serial.println(press);
+
+//   temp = computer.read_temperature(CCC_CH);
+//   Serial.print("Temperature CCC: ");
+//   Serial.print(temp);
+//   Serial.print(" °C\t");
+//   press = computer.read_pressure(CCC_CH);
+//   Serial.print("Pressure CCC: ");
+//   Serial.println(press);
