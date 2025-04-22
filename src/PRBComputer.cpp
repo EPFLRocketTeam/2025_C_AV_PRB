@@ -1,5 +1,6 @@
 // Last update: 11/03/2025
 #include "PRBComputer.h"
+#include "Wire.h"
 
 
 #define TEST_WITHOUT_PRESSURE
@@ -57,34 +58,52 @@ void PRBComputer::close_valve(int valve)
     }
 }
 
+void scanI2C() {
+    byte error, address;
+    int nDevices = 0;
+  
+    Serial.println("Scanning...");
+  
+    for (address = 1; address < 127; address++ ) {
+      Wire2.beginTransmission(address);
+      error = Wire2.endTransmission();
+  
+      if (error == 0) {
+        Serial.print("I2C device found at address 0x");
+        Serial.println(address, HEX);
+        nDevices++;
+      }
+    }
+    if (nDevices == 0)
+      Serial.println("No I2C devices found");
+    else
+      Serial.println("Scan done");
+  }
+
 
 // ========= sensor reading =========
 float PRBComputer::read_pressure(int sensor)
 {
-    int i2cAddress = 0x00;
+    // Serial.println("Reading pressure...");
     bool I2C = false;
+    int DSP_S = 0;
+    float press = 0.0;
 
     switch (sensor)
     {
-    case P_OIN:
-    case T_OIN:
-    case T_EIN:
+    case P_OIN: {
+        int rawValue = analogRead(P_OIN);
+        float voltage = (rawValue / 4095.0) * 3.3; // Assuming a 12-bit ADC and 3.3V reference
+        Serial.println("voltage: " + String(voltage));
         //read analog pressure
         break;
+    }
 
         //to work on : how to differenciat between the 3 sensors
     case EIN_CH:
-        selectI2CChannel(EIN_CH);
-        I2C = true;
-        break;
-
     case CIG_CH:
-        selectI2CChannel(CIG_CH);
-        I2C = true;
-        break;
-
     case CCC_CH:
-        selectI2CChannel(CCC_CH);
+        selectI2CChannel(sensor);
         I2C = true;
         break;
     
@@ -95,34 +114,13 @@ float PRBComputer::read_pressure(int sensor)
     
     if (I2C)
     {
-        i2cAddress = SENS_ADDR;
-        // Request data from the I2C device
-        // Wire2.beginTransmission(i2cAddress);
-        // Wire2.write(0x00); // Example: Command to request pressure data
-
-        if (my_sensor.isConnected()) {
-            value_sensor = my_sensor.readDSP_S();
-            Serial.print("Pressure: ");
-            Serial.println(value_sensor);
-        } else {
-            Serial.println("Sensor not connected");
-        }
-
-        // Wire2.endTransmission();
-
-        // // Read data from the I2C device
-        // Wire2.requestFrom(i2cAddress, 2); // Request 2 bytes of data
-        // if (Wire2.available() == 2)
-        // {
-        //     uint8_t msb = Wire2.read(); // Most significant byte
-        //     uint8_t lsb = Wire2.read(); // Least significant byte
-        //     int16_t rawPressure = (msb << 8) | lsb; // Combine bytes
-        //     return rawPressure / 100.0; // Convert to meaningful units (e.g., bar)
-        //}
+        DSP_S = my_sensor.readDSP_S();
+        press = DSP_S * 5.0 / 1600 + 50;
     }
 
-    return 0.0;
+    return press;
 }
+
 
 float PRBComputer::read_temperature(int sensor)
 {
@@ -131,7 +129,8 @@ float PRBComputer::read_temperature(int sensor)
     bool I2C = false;
     int value = 0.0;
     float voltage = 0.0;
-    float temperature = 0.0;
+    int DSP_T = 0;
+    float temp = 0.0;
 
     switch (sensor)
     {
@@ -148,25 +147,17 @@ float PRBComputer::read_temperature(int sensor)
         Serial.print("Voltage: ");
         Serial.println(voltage);
         //convert the voltage to temperature
-        temperature = 0.2667 * (voltage * 1100.0 / (5-voltage) - 266.7); // Example conversion formula
+        temp = 0.2667 * (voltage * 1100.0 / (5-voltage) - 266.7); // Example conversion formula
         Serial.print("Temperature: ");
-        Serial.println(temperature);
-        return temperature;
+        Serial.println(temp);
+        return temp;
         break;
 
         //to work on : how to differenciat between the 3 sensors
     case EIN_CH:
-        selectI2CChannel(EIN_CH);
-        I2C = true;
-        break;
-
     case CIG_CH:
-        selectI2CChannel(CIG_CH);
-        I2C = true;
-        break;
-
     case CCC_CH:
-        selectI2CChannel(CCC_CH);
+        selectI2CChannel(sensor);
         I2C = true;
         break;
     
@@ -177,32 +168,11 @@ float PRBComputer::read_temperature(int sensor)
     
     if (I2C)
     {
-        i2cAddress = SENS_ADDR;
-        // Request data from the I2C device
-        // Wire2.beginTransmission(i2cAddress);
-        // Wire2.write(0x00); // Example: Command to request pressure data
-        // Wire2.endTransmission();
-
-        if (my_sensor.isConnected()) {
-            value_sensor = my_sensor.readDSP_T();
-            Serial.print("Temperature: ");
-            Serial.println(value_sensor);
-        } else {
-            Serial.println("Sensor not connected");
-        }
-
-        // Read data from the I2C device
-        // Wire2.requestFrom(i2cAddress, 2); // Request 2 bytes of data
-        // if (Wire2.available() == 2)
-        // {
-        //     uint8_t msb = Wire2.read(); // Most significant byte
-        //     uint8_t lsb = Wire2.read(); // Least significant byte
-        //     int16_t rawPressure = (msb << 8) | lsb; // Combine bytes
-        //     return rawPressure / 100.0; // Convert to meaningful units (e.g., bar)
-        // }
+        DSP_T = my_sensor.readDSP_T();
+        temp = DSP_T * 82.5 / 16000 + 42.5;
     }
 
-    return 0.0;
+    return temp;
 }
 
 bool PRBComputer::check_pressure(int sensor, float threshold)
@@ -493,8 +463,51 @@ void PRBComputer::send_update()
 }
 
 
-void selectI2CChannel(uint8_t channel) {
+void selectI2CChannel(int channel) {
     Wire2.beginTransmission(MUX_ADDR);
-    Wire2.write(1 << channel); // Enable only the selected channel
+    Wire2.write(channel); // Enable only the selected channel
     Wire2.endTransmission();
 }
+
+// delay(100);
+//   Wire2.beginTransmission(0x70); // 0x70 is the 7-bit address of the PCA9548A
+//   Wire2.write(0x01); // Enable channel 0 (bit 0 = 1)
+//   Wire2.endTransmission();
+
+//   //print out pressure in %. Modify for desired format
+//   //-16000 to 16000, 0 to 100%
+//   Serial.print("Pressure sensor 1:");  
+//   DSP_S1 = mySensor.readDSP_S();
+//   pct1 = DSP_S1 * 5.0 / 1600 + 50;
+//   Serial.print(pct1,2);
+//   Serial.print("%\t");
+
+//   //print out bridge temperature in °C
+//   //-16000 to 16000, -40 to 125°C
+//   Serial.print("\tBridge Temp:");
+//   DSP_T1 = mySensor.readDSP_T();
+//   pct1 = DSP_T1 * 82.5 / 16000 + 42.5;
+//   Serial.print(pct1,1);
+//   Serial.print("°C");
+
+//   Serial.print("\t\t");
+
+//   Wire2.beginTransmission(0x70); // 0x70 is the 7-bit address of the PCA9548A
+//   Wire2.write(0x02); // Enable channel 0 (bit 0 = 1)
+//   Wire2.endTransmission();
+
+//       //print out pressure in %. Modify for desired format
+//   //-16000 to 16000, 0 to 100%
+//   Serial.print("Pressure sensor 2:");  
+//   DSP_S2 = mySensor.readDSP_S();
+//   pct2 = DSP_S2 * 5.0 / 1600 + 50;
+//   Serial.print(pct2,2);
+//   Serial.print("%\t");
+
+// //print out bridge temperature in °C
+// //-16000 to 16000, -40 to 125°C
+//   Serial.print("\tBridge Temp:");
+//   DSP_T2 = mySensor.readDSP_T();
+//   pct2 = DSP_T2 * 82.5 / 16000 + 42.5;
+//   Serial.print(pct2,1);
+//   Serial.print("°C");

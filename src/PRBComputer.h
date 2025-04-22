@@ -2,7 +2,7 @@
 #include "constant.h"
 #include "intranet_commands.h"
 #include "PTE7300_I2C.h"
-#include <Wire.h>
+
 
 class PRBComputer
 {
@@ -46,5 +46,5 @@ public:
 };
 
 
-void selectI2CChannel(uint8_t channel); 
+void selectI2CChannel(int channel); 
 
