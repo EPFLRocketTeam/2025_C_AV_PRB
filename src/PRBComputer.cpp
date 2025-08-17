@@ -18,6 +18,22 @@ PRBComputer::~PRBComputer()
     state = ERROR;
 }
 
+uint8_t PRBComputer::read_valve_state()
+{
+    uint8_t state = 0;
+    state |= digitalRead(IE_nc) << 2;
+    state |= digitalRead(IO_ncC) << 1;
+    state |= digitalRead(MOSFET) << 0;
+    return state;
+}
+
+void PRBComputer::set_valve_states(uint8_t state)
+{
+    digitalWrite(IE_nc, (state & (HIGH<<2)) ? HIGH : LOW);
+    digitalWrite(IO_ncC, (state & (HIGH<<1)) ? HIGH : LOW);
+    digitalWrite(MOSFET, (state & (HIGH<<0)) ? HIGH : LOW);
+}
+
 // ========= valve and motor control =========
 void PRBComputer::control_motor_angle(int motor, int angle)
 {
@@ -153,7 +169,7 @@ float PRBComputer::read_temperature(int sensor)
         return temp;
         break;
 
-        //to work on : how to differenciat between the 3 sensors
+        //TODO to work on : how to differenciat between the 3 sensors
     case EIN_CH:
     case CIG_CH:
     case CCC_CH:
