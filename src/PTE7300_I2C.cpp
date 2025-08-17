@@ -259,10 +259,7 @@ int16_t PTE7300_I2C::readDSP_T()
   return (int16_t)(DSP_T); // type-cast to signed integer
 }
 
-systemState PTE7300_I2C::get_system_state()
-{
-  return _systemState;
-}
+
 
 int16_t PTE7300_I2C::readDSP_S()
 {

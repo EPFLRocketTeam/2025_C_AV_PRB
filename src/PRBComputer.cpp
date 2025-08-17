@@ -446,7 +446,7 @@ bool PRBComputer::ignition_sq4(int time)
     return true;
 }
 
-void PRBComputer::manual_aboart()
+void PRBComputer::manual_abort()
 {
     //manual abort
 
@@ -455,6 +455,10 @@ void PRBComputer::manual_aboart()
     //change state
 }
 
+systemState PRBComputer::get_system_state()
+{
+    return state;
+}
 
 // ========= send update =========
 void PRBComputer::send_update()

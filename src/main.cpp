@@ -21,7 +21,7 @@ void receiveEvent(int numBytes) {
 
     // TODO: add missing functions and check if current calls are correct
     switch (receivedCommand) {
-      case AV_NET_PRB_TIMESTAMP_MAIN:
+      case AV_NET_PRB_TIMESTAMP:
         Serial.println("Received AV_NET_PRB_TIMESTAMP_MAIN command");
         break;
       case AV_NET_PRB_WAKE_UP:
@@ -32,10 +32,6 @@ void receiveEvent(int numBytes) {
         break;
       case AV_NET_PRB_CLEAR_TO_IGNITE:
         Serial.println("Received AV_NET_PRB_CLEAR_TO_IGNITE command");
-        break;
-      case AV_NET_PRB_FSM_PRB:
-        Serial.println("Received AV_NET_PRB_FSM_PRB command");
-        // responseValue = computer.get_stage_sq();
         break;
       case AV_NET_PRB_P_OIN:
         Serial.println("Received AV_NET_PRB_P_OIN command");
@@ -58,19 +54,15 @@ void receiveEvent(int numBytes) {
         Serial.println("Received AV_NET_PRB_P_CCC command");
         // responseValue = computer.read_pressure(CCC_CH);
         break;
-      case AV_NET_PRB_T_CCC:
+    case AV_NET_PRB_T_CCC:
         Serial.println("Received PRB_T_CCC command");
         // responseValue = computer.read_temperature(CCC_CH);
         break;
+case AV_NET_PRB_IGNITER:
+        Serial.println("Received AV_NET_PRB_IGNITER command");
+        // Handle igniter control
+        break;
 
-      case AV_NET_PRB_P_CIG:
-        Serial.println("Received AV_NET_PRB_P_CIG command");
-        // responseValue = computer.read_pressure(CIG_CH);
-        break;
-      case AV_NET_PRB_T_CIG:
-        Serial.println("Received AV_NET_PRB_T_CIG command");
-        // responseValue = computer.read_temperature(CIG_CH);
-        break;
       case AV_NET_PRB_VALVES_STATE:
         Serial.println("Received AV_NET_PRB_VALVES_STATE command");
         break;
