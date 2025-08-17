@@ -33,6 +33,7 @@ public:
     //getter
     int get_time_start_sq();
     int get_stage_sq();
+    systemState get_system_state();
 
     //ignition sequences
     bool ignition_sq1(int time);
