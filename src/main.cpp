@@ -25,55 +25,55 @@ void receiveEvent(int numBytes) {
 
     // TODO: add missing functions and check if current calls are correct
     switch (receivedCommand) {
-      case PRB_TIMESTAMP_MAIN:
+      case AV_NET_PRB_TIMESTAMP_MAIN:
         Serial.println("Received PRB_TIMESTAMP_MAIN command");
         break;
-      case PRB_WAKE_UP:
+      case AV_NET_PRB_WAKE_UP:
         Serial.println("Received PRB_WAKE_UP command");
         break;
-      case PRB_IS_WOKEN_UP:
+      case AV_NET_PRB_IS_WOKEN_UP:
         Serial.println("Received PRB_IS_WOKEN_UP command");
         break;
-      case PRB_CLEAR_TO_IGNITE:
+      case AV_NET_PRB_CLEAR_TO_IGNITE:
         Serial.println("Received PRB_CLEAR_TO_IGNITE command");
         break;
-      case PRB_FSM_PRB:
+      case AV_NET_PRB_FSM_PRB:
         responseValue = computer.get_stage_sq();
         Wire1.write((uint8_t*)&responseValue, sizeof(responseValue));
         break;
-      case PRB_P_OIN:
+      case AV_NET_PRB_P_OIN:
         responseValue = computer.read_pressure(P_OIN);
         Wire1.write((uint8_t*)&responseValue, sizeof(responseValue));
         break;
-      case PRB_T_OIN:
+      case AV_NET_PRB_T_OIN:
         responseValue = computer.read_temperature(T_OIN);
         Wire1.write((uint8_t*)&responseValue, sizeof(responseValue));
         break;
-      case PRB_P_EIN:
+      case AV_NET_PRB_P_EIN:
         responseValue = computer.read_pressure(EIN_CH);
         Wire1.write((uint8_t*)&responseValue, sizeof(responseValue));
         break;
-      case PRB_T_EIN:
+      case AV_NET_PRB_T_EIN:
         responseValue = computer.read_temperature(T_EIN);
         Wire1.write((uint8_t*)&responseValue, sizeof(responseValue));
         break;
-      case PRB_P_CCC:
+      case AV_NET_PRB_P_CCC:
         responseValue = computer.read_pressure(CCC_CH);
         Wire1.write((uint8_t*)&responseValue, sizeof(responseValue));
         break;
-      case PRB_T_CCC:
+      case AV_NET_PRB_T_CCC:
         responseValue = computer.read_temperature(CCC_CH);
         Wire1.write((uint8_t*)&responseValue, sizeof(responseValue));
         break;
-      case PRB_P_CIG:
+      case AV_NET_PRB_P_CIG:
         responseValue = computer.read_pressure(CIG_CH);
         Wire1.write((uint8_t*)&responseValue, sizeof(responseValue));
         break;
-      case PRB_T_CIG:
+      case AV_NET_PRB_T_CIG:
         responseValue = computer.read_temperature(CIG_CH);
         Wire1.write((uint8_t*)&responseValue, sizeof(responseValue));
         break;
-      case PRB_VALVES_STATE:
+      case AV_NET_PRB_VALVES_STATE:
         responseValue = computer.read_valve_state();
         Wire1.write((uint8_t*)&responseValue, sizeof(responseValue));
         break;
