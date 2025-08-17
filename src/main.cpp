@@ -17,7 +17,7 @@ void receiveEvent(int numBytes) {
   if (numBytes >= 1) {
     receivedCommand = Wire.read(); // Read the command
     //TODO: need massive review 
-    receivedValue = receivedCommand & 0x0F;
+    uint8_t receivedValue = receivedCommand & 0x0F;
     receivedValue = receivedCommand >> 8;
 
     Serial.print("Received I2C command: 0x");
