@@ -86,16 +86,21 @@ void requestEvent() {
 }
 
 void setup() {
-  // PIN configuration
-  pinMode(VE_no, OUTPUT);
-  pinMode(VO_noC, OUTPUT);
-  pinMode(IE_nc, OUTPUT);
-  pinMode(IO_ncC, OUTPUT);
+
+  //PIN configuration 
   pinMode(MOSFET, OUTPUT);
 
   pinMode(T_EIN, INPUT);
   pinMode(T_OIN, INPUT);
   pinMode(P_OIN, INPUT);
+
+  pinMode(ME_b, OUTPUT);
+  pinMode(MO_bC, OUTPUT);
+
+  pinMode(RGB_BLUE, OUTPUT);
+  pinMode(RGB_GREEN, OUTPUT);
+  pinMode(RGB_RED, OUTPUT);
+  pinMode(BUZZER, OUTPUT);
 
   pinMode(RESET, OUTPUT);
   digitalWrite(RESET, HIGH);
@@ -120,33 +125,64 @@ void setup() {
   Serial.begin(115200); // For debugging
   Serial.println("PRB Computer started");
 
-  digitalWrite(LED_BUILTIN, HIGH); // Turn the LED on (HIGH is the voltage level)
-  delay(1000); // Wait for a second
-  digitalWrite(LED_BUILTIN, LOW); // Turn the LED off by making the voltage LOW
+  digitalWrite(LED_BUILTIN, HIGH);
+
+  digitalWrite(RGB_BLUE, HIGH);
+  delay(500);
+  digitalWrite(RGB_BLUE, LOW);
+  digitalWrite(RGB_GREEN, HIGH);
+  delay(500);
+  digitalWrite(RGB_GREEN, LOW);
+  digitalWrite(RGB_RED, HIGH);
+  delay(500);
+  digitalWrite(RGB_GREEN, HIGH);
+  digitalWrite(RGB_BLUE, HIGH);
+  tone(BUZZER, 440, 1000);
+  delay(1000);
+  digitalWrite(RGB_GREEN, LOW);
+  digitalWrite(RGB_BLUE, LOW);
+  digitalWrite(RGB_RED, LOW);
+  noTone(BUZZER);
+
+
+  digitalWrite(LED_BUILTIN, LOW);
+
+  Serial.println("PRB Computer setup done");
+
+  computer.set_state(IGNITION_SQ);
+  computer.set_time_start_sq(millis());
+  computer.set_ignition_stage(GO);
 }
 
 PTE7300_I2C mySensor; // attach sensor
 int16_t DSP_T1;
+bool valve_opened = false;
+
+float EIN_temp = 0.0;
+float CCC_temp = 0.0;
+float EIN_press = 0.0;
+float CCC_press = 0.0;
+bool blue_led_state = false;
+
+bool valve_open = false;
+int count_cycles = 0;
 
 void loop() {
-  delay(100);
+
+  // computer.update(millis());
+
+  // config_rgb_led_1(computer.get_ignition_stage());
+  // config_rgb_led_2(computer.get_shutdown_stage());
+
+  // test_read_sensors(&computer);
+  // test_read_pt1000(&computer);
+  test_read_kulite(&computer);
+
+  digitalWrite(RGB_BLUE, blue_led_state ? HIGH : LOW);
+  blue_led_state = !blue_led_state;
+
+  delay(1000);
 }
 
-// float temp = 0.0;
-//   float press = 0.0;
-
-//   temp = computer.read_temperature(EIN_CH);
-//   Serial.print("Temperature EIN: ");
-//   Serial.print(temp);
-//   Serial.print(" °C\t");
-//   press = computer.read_pressure(EIN_CH);
-//   Serial.print("Pressure EIN: ");
-//   Serial.println(press);
-
-//   temp = computer.read_temperature(CCC_CH);
-//   Serial.print("Temperature CCC: ");
-//   Serial.print(temp);
-//   Serial.print(" °C\t");
-//   press = computer.read_pressure(CCC_CH);
-//   Serial.print("Pressure CCC: ");
-//   Serial.println(press);
+  // //Stress test
+  // 

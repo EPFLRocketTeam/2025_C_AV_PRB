@@ -8,9 +8,9 @@
 PRBComputer::PRBComputer(systemState state)
 {
     state = state;
-    time_start_sq = 0;
-    stage_sq = 0;
-    ignition_sq_ready = false;
+    time_start_ignition = 0;
+    ignition_stage = NOGO;
+    shutdown_stage = SLEEP;
 }
 
 PRBComputer::~PRBComputer()
@@ -28,10 +28,8 @@ void PRBComputer::open_valve(int valve)
 {
     switch (valve)
     {
-    case VE_no:
-    case VO_noC:
-    case IE_nc:
-    case IO_ncC:
+    case ME_b:
+    case MO_bC:
     case MOSFET:
         digitalWrite(valve, HIGH);
         break;
@@ -45,10 +43,8 @@ void PRBComputer::close_valve(int valve)
 {
     switch (valve)
     {
-    case VE_no:
-    case VO_noC:
-    case IE_nc:
-    case IO_ncC:
+    case ME_b:
+    case MO_bC:
     case MOSFET:
         digitalWrite(valve, LOW);
         break;
@@ -57,28 +53,6 @@ void PRBComputer::close_valve(int valve)
         break;
     }
 }
-
-void scanI2C() {
-    byte error, address;
-    int nDevices = 0;
-  
-    Serial.println("Scanning...");
-  
-    for (address = 1; address < 127; address++ ) {
-      Wire2.beginTransmission(address);
-      error = Wire2.endTransmission();
-  
-      if (error == 0) {
-        Serial.print("I2C device found at address 0x");
-        Serial.println(address, HEX);
-        nDevices++;
-      }
-    }
-    if (nDevices == 0)
-      Serial.println("No I2C devices found");
-    else
-      Serial.println("Scan done");
-  }
 
 
 // ========= sensor reading =========
@@ -89,11 +63,15 @@ float PRBComputer::read_pressure(int sensor)
     int DSP_S = 0;
     float press = 0.0;
 
+    int max_kulite_value = 100;
+
     switch (sensor)
     {
     case P_OIN: {
         int rawValue = analogRead(P_OIN);
         float voltage = (rawValue / 4095.0) * 3.3; // Assuming a 12-bit ADC and 3.3V reference
+        float v_sensor = voltage / 33;
+        press = (v_sensor * 1000.0) * (max_kulite_value / 100.0);
         Serial.println("voltage: " + String(voltage));
         //read analog pressure
         break;
@@ -125,32 +103,31 @@ float PRBComputer::read_pressure(int sensor)
 float PRBComputer::read_temperature(int sensor)
 {
     //read temperature
-    int i2cAddress = 0x00;
     bool I2C = false;
     int value = 0.0;
-    float voltage = 0.0;
+    float voltage = 0.0, Rpt = 0.0, temp = 0.0;
     int DSP_T = 0;
-    float temp = 0.0;
+    // float temp = 0.0;
 
     switch (sensor)
     {
     case T_OIN:
-
-
     case T_EIN:
         //read analog temperature
         value = analogRead(sensor);
         Serial.print("Value: ");
         Serial.println(value);
         //convert the value to voltage 
-        voltage = (value * 3.3) / 4095.0; // Assuming a 12-bit ADC and 5V reference
+        voltage = (value * 3.3) / 4095.0; // Assuming a 12-bit ADC and 3V3 reference
         Serial.print("Voltage: ");
         Serial.println(voltage);
         //convert the voltage to temperature
-        temp = 0.2667 * (voltage * 1100.0 / (5-voltage) - 266.7); // Example conversion formula
+        Rpt = (voltage * 1100.0)/(3.3 - voltage);
+        Serial.print("Resistance measured: ");
+        Serial.println(Rpt);
+        temp = (Rpt-1000)/3.85;
         Serial.print("Temperature: ");
         Serial.println(temp);
-        return temp;
         break;
 
         //to work on : how to differenciat between the 3 sensors
@@ -177,283 +154,135 @@ float PRBComputer::read_temperature(int sensor)
 
 bool PRBComputer::check_pressure(int sensor, float threshold)
 {
-    if (sensor == P_OIN)
-    {
-        //read analog pressure
-    } else if (sensor == EIN_CH || sensor == CIG_CH || sensor == CCC_CH)
-    {
-        float pressure = read_pressure(sensor);
-        if (pressure > threshold)
-        {
-            return true;
-        }
-        else
-        {
-            return false;
-        }
-    } else
-    {
-        //error
+    bool check = false;
+
+    float pressure = read_pressure(sensor);
+    if (pressure > threshold) {
+        check = true;
     }
     
-    return false;
+    return check;
 }
 
 void PRBComputer::set_time_start_sq(int time)
 {
-    time_start_sq = time;
+    time_start_ignition = time;
 }
 
 
 // ========= getter =========
-int PRBComputer::get_time_start_sq()
-{
-    return time_start_sq;
-}
+int PRBComputer::get_time_start_sq() { return time_start_ignition;}
 
-int PRBComputer::get_stage_sq()
-{
-    return stage_sq;
-}
+ignitionStage PRBComputer::get_ignition_stage() { return ignition_stage; }
 
+shutdownStage PRBComputer::get_shutdown_stage() { return shutdown_stage; }
+
+// ========= setter =========
+void PRBComputer::set_state(systemState new_state) { state = new_state; }
+
+void PRBComputer::set_ignition_stage(ignitionStage new_stage) { ignition_stage = new_stage; }
+
+void PRBComputer::set_ignition_start_time(int time) { time_start_ignition = time; }
+
+void PRBComputer::set_shutdown_stage(shutdownStage new_stage) { shutdown_stage = new_stage; }
 
 // ========= ignition sequences =========
-bool PRBComputer::ignition_sq1(int time)
+bool PRBComputer::ignition_sq(int time)
 {
     //ignition sequence 1 (ISQ1)
-
-    //Pre-chill : MO-b to 50°
-    if (stage_sq == 0) 
+    if (ignition_stage == GO)
     {
-        control_motor_angle(MO_bC, 50);
-        stage_sq = 1;
+        ignition_stage = PRE_CHILL;
     }
 
-
-    //after 5s
-    //Pre-chill : open IO-nc
-    if (time - time_start_sq >= 5000 && stage_sq == 1)
+    //Pre-chill : open MO-b
+    if (ignition_stage == PRE_CHILL) 
     {
-        open_valve(IO_ncC);
-        stage_sq += 1;
+        open_valve(MO_bC);
+        ignition_stage = POST_CHILL;
     }
 
-
-    //after 10s
-    //Pre-chill : close IO-nc
-    //Stop chill : MO-b to 0°
-    //Fill channels : ME-b to 30°
-    //Activate : MOSFET (I-GP)
-    if (time - time_start_sq >= 10000 && stage_sq == 2)
+    // after 10s
+    // stop pre-chill : close MO-b
+    if (ignition_stage == POST_CHILL && time - time_start_ignition >= time_sq_ignition[1])
     {
-        close_valve(IO_ncC);
-        control_motor_angle(ME_b, 30);
-        control_motor_angle(MO_bC, 0);
-        open_valve(MOSFET);
-        stage_sq += 1;
+        close_valve(MO_bC);
+        ignition_stage = IGNITION;
     }
-
-
-    //after 12.5s
-    //Stop fill : MO-b to 0°
-    if (time - time_start_sq >= 12500 && stage_sq == 3)
-    {
-        control_motor_angle(MO_bC, 0);
-        stage_sq += 1;
-    }
-
 
     //after 15s
-    //Ignition : Open I0-ncC
-    //Ignition : Open IE-nc
-    if (time - time_start_sq >= 15000 && stage_sq == 4)
+    //Activate : MOSFET (IGNITER)
+    if (ignition_stage == IGNITION && time - time_start_ignition >= time_sq_ignition[2])
     {
-        open_valve(IO_ncC);
-        open_valve(IE_nc);
-        stage_sq += 1;
+        open_valve(MOSFET);
+        ignition_stage = LIFTOFF;
     }
 
-
-    //after 15.2s
-    //check pressure : P_CIG > 15 bar
-    //change state
-    if (time - time_start_sq >= 15200 && stage_sq == 5)
+    //after 16s
+    //Open MO-b and ME-b
+    if (ignition_stage == LIFTOFF && time - time_start_ignition >= time_sq_ignition[3])
     {
-        #ifdef TEST_WITHOUT_PRESSURE
-        state = IGNITION_SQ2;
-        stage_sq = 0;
-        return true;
-        #else
-        if (check_pressure(CIG, 15))
-        {
-            state = IGNITION_SQ2;
-            stage_sq = 0;
-            return true;
-        }
-        else
-        {
-            state = ABORT;
-            stage_sq = 0;
-            return false;
-        }
-        #endif
-    }
-
-    return true;
-}
-
-bool PRBComputer::ignition_sq2(int time)
-{
-    //ignition sequence 2 (ISQ2)
-
-    //MO-b to 40°
-    //ME-b to 40°
-    if (stage_sq == 0)
-    {
-        control_motor_angle(MO_bC, 40);
-        control_motor_angle(ME_b, 40);
-        stage_sq += 1;
-    }
-
-
-    //after 200ms
-    //check pressure : P_CCC > 2 bar
-    //change state
-    if (time - time_start_sq >= 200 && stage_sq == 1)
-    {
-        #ifdef TEST_WITHOUT_PRESSURE
-        state = IGNITION_SQ3;
-        stage_sq = 0;
-        return true;
-        #else
-        if (check_pressure(CCC, 2))
-        {
-            state = IGNITION_SQ3;
-            stage_sq = 0;
-            return true;
-        }
-        else
-        {
-            state = ABORT;
-            stage_sq = 0;
-            return false;
-        }
-        #endif
-    }
-
-    return true;
-}
-
-bool PRBComputer::ignition_sq3(int time)
-{
-    //ignition sequence 3 (ISQ3)
-
-    //MO-b to 90°
-    //ME-b to 90°
-    //Close : IO-ncC
-    //Close : IE-nc
-    //Deactivate : MOSFET (I-GP)
-    if (stage_sq == 0)
-    {
-        control_motor_angle(MO_bC, 90);
-        control_motor_angle(ME_b, 90);
-        close_valve(IO_ncC);
-        close_valve(IE_nc);
-        close_valve(MOSFET);
-        stage_sq += 1;
+        open_valve(MO_bC);
+        open_valve(ME_b);
+        ignition_stage = SANITY_CHECK;
     }
 
     //after 100ms
-    //check pressure : P_CCC > 25 bar
-    //change state
-    if (time - time_start_sq >= 100 && stage_sq == 1)
+    if (ignition_stage == SANITY_CHECK && time - time_start_ignition >= time_sq_ignition[4])
     {
-        #ifdef TEST_WITHOUT_PRESSURE
-        state = IGNITION_SQ4;
-        stage_sq = 0;
-        return true;
-        #else
-        if (check_pressure(CCC, 25))
-        {
-            state = IGNITION_SQ4;
-            stage_sq = 0;
-            return true;
+        // Perform sanity check
+        float P_CCC_pres = read_pressure(CCC_CH);
+        if (P_CCC_pres > -25) { // !!!!! CHANGE VALUE !!!!!!
+            state = SHUTDOWN_SQ;
+            ignition_stage = NOGO;
+            shutdown_stage = CLOSE_MO_bC;
+            time_start_shutdown = time;
+        } else {
+            // state = ABORT;
         }
-        else
-        {
-            state = ABORT;
-            stage_sq = 0;
-            return false;
-        }
-        #endif
     }
-
     return true;
 }
 
-bool PRBComputer::ignition_sq4(int time)
+bool PRBComputer::shutdown_sq(int time)
 {
-    //ignition sequence 4 (ISQ4)
-
-    //after 15s
-    //MO-b to 0°
-    if (time - time_start_sq >= 15000 && stage_sq == 0)
+    //shutdown sequence
+    if (shutdown_stage == CLOSE_MO_bC && time - time_start_shutdown >= time_sq_shutdown[0])
     {
-        control_motor_angle(MO_bC, 0);
-        stage_sq += 1;
+        close_valve(MO_bC);
+        shutdown_stage = CLOSE_ME_b;
     }
 
-
-    //after 20s
-    //ME-b to 0°
-    if (time - time_start_sq >= 20000 && stage_sq == 1)
+    if (shutdown_stage == CLOSE_ME_b && time - time_start_shutdown >= time_sq_shutdown[1])
     {
-        control_motor_angle(ME_b, 0);
-        stage_sq += 1;
+        close_valve(ME_b);
+        shutdown_stage = OPEN_MO_bC;
     }
 
-
-    //after 22s
-    //MO-b to 90°
-    if (time - time_start_sq >= 22000 && stage_sq == 2)
+    if (shutdown_stage == OPEN_MO_bC && time - time_start_shutdown >= time_sq_shutdown[2])
     {
-        control_motor_angle(MO_bC, 90);
-        stage_sq += 1;
+        open_valve(MO_bC);
+        shutdown_stage = OPEN_ME_b;
     }
 
-    
-    //after 50s 
-    //ME-b to 90°
-    if (time - time_start_sq >= 50000 && stage_sq == 3)
+    if (shutdown_stage == OPEN_ME_b && time - time_start_shutdown >= time_sq_shutdown[3])
     {
-        control_motor_angle(ME_b, 90);
-        stage_sq += 1;
+        open_valve(ME_b);
+        shutdown_stage = SHUTOFF;
     }
-
-    //after 100s
-    //Open : VO-noC
-    //Open : VE-no
-    //change state
-    if (time - time_start_sq >= 100000 && stage_sq == 4)
-    {
-        open_valve(VO_noC);
-        open_valve(VE_no);
-        state = IDLE;
-        stage_sq = 0;
-        return true;
-    }
-
-    return true;
 }
 
-void PRBComputer::manual_aboart()
+void PRBComputer::manual_abort()
 {
     //manual abort
 
     //check pressure : P_CCC > 25 bar
     //MO-b to 0°
     //change state
+
+    state = ABORT;
 }
+
 
 
 // ========= send update =========
@@ -467,4 +296,155 @@ void selectI2CChannel(int channel) {
     Wire2.beginTransmission(MUX_ADDR);
     Wire2.write(channel); // Enable only the selected channel
     Wire2.endTransmission();
+}
+
+void PRBComputer::update(int time)
+{
+    // Update the state machine
+    switch (state)
+    {
+    case IDLE:
+        // Do nothing
+        break;
+    case IGNITION_SQ:
+        ignition_sq(time);
+        break;
+    case SHUTDOWN_SQ:
+        shutdown_sq(time);
+        break;
+    case ABORT:
+        manual_abort();
+        break;
+    default:
+        break;
+    }
+}
+
+void config_rgb_led_1(ignitionStage stage){
+    switch (stage)
+  {
+  case PRE_CHILL:
+    digitalWrite(RGB_GREEN, HIGH);
+    digitalWrite(RGB_RED, LOW);
+    digitalWrite(RGB_BLUE, LOW);
+    break;
+
+  case POST_CHILL:
+    digitalWrite(RGB_BLUE, HIGH);
+    digitalWrite(RGB_GREEN, LOW);
+    digitalWrite(RGB_RED, LOW);
+    break;
+
+  case IGNITION:
+    digitalWrite(RGB_RED, HIGH);
+    digitalWrite(RGB_GREEN, LOW);
+    digitalWrite(RGB_BLUE, LOW);
+    break;
+
+  case LIFTOFF:
+    digitalWrite(RGB_RED, HIGH);
+    digitalWrite(RGB_BLUE, HIGH);
+    digitalWrite(RGB_GREEN, LOW);
+    break;
+
+  case SANITY_CHECK:
+    digitalWrite(RGB_RED, LOW);
+    digitalWrite(RGB_GREEN, HIGH);
+    digitalWrite(RGB_BLUE, LOW);
+    break;
+
+  default:
+    break;
+  }
+}
+
+void config_rgb_led_2(shutdownStage stage){
+    switch (stage)
+  {
+  case CLOSE_MO_bC:
+    digitalWrite(RGB_GREEN, HIGH);
+    digitalWrite(RGB_RED, HIGH);
+    digitalWrite(RGB_BLUE, LOW);
+    break;
+
+  case CLOSE_ME_b:
+    digitalWrite(RGB_GREEN, LOW);
+    digitalWrite(RGB_RED, HIGH);
+    digitalWrite(RGB_BLUE, HIGH);
+    break;
+
+  case OPEN_MO_bC:
+  case OPEN_ME_b:
+    digitalWrite(RGB_GREEN, HIGH);
+    digitalWrite(RGB_RED, LOW);
+    digitalWrite(RGB_BLUE, LOW);
+    break;
+
+  default:
+    break;
+  }
+}
+
+void test_read_sensata(PRBComputer* computer)
+{
+    // Test reading sensors
+    float ein_temp = computer->read_temperature(EIN_CH);
+    float ccc_temp = computer->read_temperature(CCC_CH);
+    float ein_press = computer->read_pressure(EIN_CH);
+    float ccc_press = computer->read_pressure(CCC_CH);
+
+    Serial.print("EIN Temperature: ");
+    Serial.println(ein_temp);
+    Serial.print("EIN Pressure: ");
+    Serial.println(ein_press);
+    Serial.print("CCC Temperature: ");
+    Serial.println(ccc_temp);
+    Serial.print("CCC Pressure: ");
+    Serial.println(ccc_press);
+}
+
+void test_read_pt1000(PRBComputer* computer)
+{
+    // Test reading PT1000 sensors
+    float ein_temp = computer->read_temperature(T_EIN);
+    float oin_temp = computer->read_temperature(T_OIN);
+
+    Serial.print("EIN Temperature: ");
+    Serial.println(ein_temp);
+    Serial.print("OIN Temperature: ");
+    Serial.println(oin_temp);
+}
+
+void test_read_kulite(PRBComputer* computer)
+{
+    // Test reading Kulite sensors
+    float oin_press = computer->read_pressure(P_OIN);
+
+    Serial.print("OIN Pressure: ");
+    Serial.println(oin_press);
+}
+
+void stress_test(PRBComputer* computer, int cycles, int valve)
+{
+    int count_cycles = 0;
+    bool valve_open = false;
+
+    while (count_cycles < cycles)
+    {
+        if (valve_open) {
+            computer->close_valve(valve);
+            digitalWrite(RGB_GREEN, LOW);
+            valve_open = false;
+        } else {
+            computer->open_valve(valve);
+            count_cycles++;
+            // Serial.print("Cycle count: ");
+            // Serial.println(count_cycles);
+            digitalWrite(RGB_GREEN, HIGH);
+            valve_open = true;
+        }
+        delay(250);
+    }
+    Serial.print("Stress test completed. Iterations: ");
+    Serial.println(count_cycles);
 }

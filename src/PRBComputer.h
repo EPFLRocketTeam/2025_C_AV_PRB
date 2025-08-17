@@ -8,10 +8,10 @@ class PRBComputer
 {
 private:
     systemState state;
-    int time_sart_sequence;
-    int time_start_sq;
-    int stage_sq;
-    bool ignition_sq_ready;
+    int time_start_ignition;
+    int time_start_shutdown;
+    ignitionStage ignition_stage;
+    shutdownStage shutdown_stage;
     PTE7300_I2C my_sensor;
     int16_t value_sensor;
 public:
@@ -30,21 +30,39 @@ public:
 
     void set_time_start_sq(int time);
 
-    //getter
+    //getters
     int get_time_start_sq();
-    int get_stage_sq();
+    ignitionStage get_ignition_stage();
+    shutdownStage get_shutdown_stage();
+
+    //setters
+    void set_state(systemState new_state);
+    void set_ignition_stage(ignitionStage new_stage);
+    void set_ignition_start_time(int time);
+    void set_shutdown_stage(shutdownStage new_stage);
 
     //ignition sequences
-    bool ignition_sq1(int time);
-    bool ignition_sq2(int time);
-    bool ignition_sq3(int time);
-    bool ignition_sq4(int time);
+    bool ignition_sq(int time);
 
-    void manual_aboart();
+    bool shutdown_sq(int time);
+
+    void manual_abort();
 
     void send_update();
+
+
+
+    void update(int time);
 };
 
 
 void selectI2CChannel(int channel); 
 
+void config_rgb_led_1(ignitionStage);
+void config_rgb_led_2(shutdownStage);
+
+void test_read_sensata(PRBComputer*);
+void test_read_pt1000(PRBComputer*);
+void test_read_kulite(PRBComputer*);
+
+void stress_test(PRBComputer*, int cycles, int valve);
