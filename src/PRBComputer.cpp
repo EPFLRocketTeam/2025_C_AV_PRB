@@ -29,8 +29,6 @@ uint8_t PRBComputer::read_valve_state()
 
 void PRBComputer::set_valve_states(uint8_t state)
 {
-    digitalWrite(IE_nc, (state & (HIGH<<2)) ? HIGH : LOW);
-    digitalWrite(IO_ncC, (state & (1<<1)) ? HIGH : LOW);
     digitalWrite(IE_nc, (state & (1<<2)) ? HIGH : LOW);
     digitalWrite(IO_ncC, (state & (1<<1)) ? HIGH : LOW);
     digitalWrite(MOSFET, (state & (1<<0)) ? HIGH : LOW);
