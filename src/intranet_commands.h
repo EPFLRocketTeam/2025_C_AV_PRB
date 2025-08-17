@@ -54,21 +54,21 @@ enum NET_REG_DPR {
 
 /* Prop Board */
 enum NET_REG_PRB {
-    PRB_TIMESTAMP_MAIN  = 0x00, // -W
-    PRB_WAKE_UP         = 0x01, // -W
-    PRB_IS_WOKEN_UP     = 0x02, // R-
-    PRB_CLEAR_TO_IGNITE = 0x03, // -W
-    PRB_FSM_PRB         = 0x04, // R-
-    PRB_P_OIN           = 0x05, // R-
-    PRB_T_OIN           = 0x06, // R-
-    PRB_P_EIN           = 0x07, // R-
-    PRB_T_EIN           = 0x08, // R-
-    PRB_P_CCC           = 0x09, // R-
-    PRB_T_CCC           = 0x0A, // R-
-    PRB_P_CIG           = 0x0B, // R-
-    PRB_T_CIG           = 0x0C, // R-
-    PRB_VALVES_STATE    = 0x0D, // R/W
-    PRB_NB_REG
+    AV_NET_PRB_TIMESTAMP_MAIN  = 0x00, // -W
+    AV_NET_PRB_WAKE_UP         = 0x01, // -W
+    AV_NET_PRB_IS_WOKEN_UP     = 0x02, // R-
+    AV_NET_PRB_CLEAR_TO_IGNITE = 0x03, // -W
+    AV_NET_PRB_FSM_PRB         = 0x04, // R-
+    AV_NET_PRB_P_OIN           = 0x05, // R-
+    AV_NET_PRB_T_OIN           = 0x06, // R-
+    AV_NET_PRB_P_EIN           = 0x07, // R-
+    AV_NET_PRB_T_EIN           = 0x08, // R-
+    AV_NET_PRB_P_CCC           = 0x09, // R-
+    AV_NET_PRB_T_CCC           = 0x0A, // R-
+    AV_NET_PRB_P_CIG           = 0x0B, // R-
+    AV_NET_PRB_T_CIG           = 0x0C, // R-
+    AV_NET_PRB_VALVES_STATE    = 0x0D, // R/W
+    AV_NET_PRB_NB_REG
 };
 
 /* Trigger Board */

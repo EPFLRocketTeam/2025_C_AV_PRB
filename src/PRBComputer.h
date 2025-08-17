@@ -22,6 +22,8 @@ public:
     void control_motor_angle(int motor, int angle);
     void open_valve(int valve);
     void close_valve(int valve);
+    uint8_t read_valve_state();
+    void set_valve_states( uint8_t state);
 
     //sensor reading
     float read_pressure(int sensor);

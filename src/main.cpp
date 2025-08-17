@@ -16,66 +16,72 @@ volatile uint32_t responseValue = 0xDEADBEEF; // Hardcoded response
 void receiveEvent(int numBytes) {
   if (numBytes >= 1) {
     receivedCommand = Wire.read(); // Read the command
+    //TODO: need massive review not sure of the parsing below
+    uint8_t receivedValue = receivedCommand & 0x0F;
+    receivedValue = receivedCommand >> 8;
+
     Serial.print("Received I2C command: 0x");
     Serial.println(receivedCommand, HEX);
 
     // TODO: add missing functions and check if current calls are correct
     switch (receivedCommand) {
-      case PRB_TIMESTAMP_MAIN:
+      case AV_NET_PRB_TIMESTAMP_MAIN:
         Serial.println("Received PRB_TIMESTAMP_MAIN command");
         break;
-      case PRB_WAKE_UP:
+      case AV_NET_PRB_WAKE_UP:
         Serial.println("Received PRB_WAKE_UP command");
         break;
-      case PRB_IS_WOKEN_UP:
+      case AV_NET_PRB_IS_WOKEN_UP:
         Serial.println("Received PRB_IS_WOKEN_UP command");
         break;
-      case PRB_CLEAR_TO_IGNITE:
+      case AV_NET_PRB_CLEAR_TO_IGNITE:
         Serial.println("Received PRB_CLEAR_TO_IGNITE command");
         break;
-      case PRB_FSM_PRB:
-        Serial.println("Received PRB_FSM_PRB command");
-        // responseValue = computer.get_stage_sq();
+      case AV_NET_PRB_FSM_PRB:
+        responseValue = computer.get_stage_sq();
+        Wire1.write((uint8_t*)&responseValue, sizeof(responseValue));
         break;
-      case PRB_P_OIN:
-        Serial.println("Received PRB_P_OIN command");
-        // responseValue = computer.read_pressure(P_OIN);
+      case AV_NET_PRB_P_OIN:
+        responseValue = computer.read_pressure(P_OIN);
+        Wire1.write((uint8_t*)&responseValue, sizeof(responseValue));
         break;
-      case PRB_T_OIN:
-        Serial.println("Received PRB_T_OIN command");
-        // responseValue = computer.read_temperature(T_OIN);
+      case AV_NET_PRB_T_OIN:
+        responseValue = computer.read_temperature(T_OIN);
+        Wire1.write((uint8_t*)&responseValue, sizeof(responseValue));
         break;
-      case PRB_P_EIN:
-        Serial.println("Received PRB_P_EIN command");
-        // responseValue = computer.read_pressure(EIN_CH); 
+      case AV_NET_PRB_P_EIN:
+        responseValue = computer.read_pressure(EIN_CH);
+        Wire1.write((uint8_t*)&responseValue, sizeof(responseValue));
         break;
-      case PRB_T_EIN:
-        Serial.println("Received PRB_T_EIN command");
-        // responseValue = computer.read_temperature(T_EIN);
+      case AV_NET_PRB_T_EIN:
+        responseValue = computer.read_temperature(T_EIN);
+        Wire1.write((uint8_t*)&responseValue, sizeof(responseValue));
         break;
-      case PRB_P_CCC:
-        Serial.println("Received PRB_P_CCC command");
-        // responseValue = computer.read_pressure(CCC_CH);
+      case AV_NET_PRB_P_CCC:
+        responseValue = computer.read_pressure(CCC_CH);
+        Wire1.write((uint8_t*)&responseValue, sizeof(responseValue));
         break;
-      case PRB_T_CCC:
-        Serial.println("Received PRB_T_CCC command");
-        // responseValue = computer.read_temperature(CCC_CH);
+      case AV_NET_PRB_T_CCC:
+        responseValue = computer.read_temperature(CCC_CH);
+        Wire1.write((uint8_t*)&responseValue, sizeof(responseValue));
         break;
-      case PRB_P_CIG:
-        Serial.println("Received PRB_P_CIG command");
-        // responseValue = computer.read_pressure(CIG_CH);
+      case AV_NET_PRB_P_CIG:
+        responseValue = computer.read_pressure(CIG_CH);
+        Wire1.write((uint8_t*)&responseValue, sizeof(responseValue));
         break;
-      case PRB_T_CIG:
-        Serial.println("Received PRB_T_CIG command");
-        // responseValue = computer.read_temperature(CIG_CH);
+      case AV_NET_PRB_T_CIG:
+        responseValue = computer.read_temperature(CIG_CH);
+        Wire1.write((uint8_t*)&responseValue, sizeof(responseValue));
         break;
-      case PRB_VALVES_STATE:
-        Serial.println("Received PRB_VALVES_STATE command");
+      case AV_NET_PRB_VALVES_STATE:
+        responseValue = computer.read_valve_state();
+        Wire1.write((uint8_t*)&responseValue, sizeof(responseValue));
         break;
       default:
         Serial.println("Unknown command received");
         break;
     }
+    
   }
 }
 
