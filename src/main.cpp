@@ -16,7 +16,7 @@ volatile uint32_t responseValue = 0xDEADBEEF; // Hardcoded response
 void receiveEvent(int numBytes) {
   if (numBytes >= 1) {
     receivedCommand = Wire.read(); // Read the command
-    //TODO: need massive review 
+    //TODO: need massive review not sure of the parsing below
     uint8_t receivedValue = receivedCommand & 0x0F;
     receivedValue = receivedCommand >> 8;
 
