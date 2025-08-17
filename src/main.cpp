@@ -77,6 +77,13 @@ void receiveEvent(int numBytes) {
         responseValue = computer.read_valve_state();
         Wire1.write((uint8_t*)&responseValue, sizeof(responseValue));
         break;
+      case AV_NET_PRB_ABORT:
+        computer.manual_abort();
+        break;
+      case AV_NET_PRB_FSM_PRB:
+        responseValue = computer.get_system_state();
+        Wire1.write((uint8_t*)&responseValue, sizeof(responseValue));
+        break;
       default:
         Serial.println("Unknown command received");
         break;

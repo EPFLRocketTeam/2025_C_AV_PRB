@@ -464,6 +464,7 @@ bool PRBComputer::ignition_sq4(int time)
 
 void PRBComputer::manual_aboart()
 {
+    //TODO
     //manual abort
 
     //check pressure : P_CCC > 25 bar
@@ -478,6 +479,10 @@ void PRBComputer::send_update()
     //send update
 }
 
+systemState PRBComputer::get_system_state()
+{
+    return state;
+}
 
 void selectI2CChannel(int channel) {
     Wire2.beginTransmission(MUX_ADDR);

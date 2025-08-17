@@ -25,6 +25,8 @@ public:
     uint8_t read_valve_state();
     void set_valve_states( uint8_t state);
 
+    systemState get_system_state();
+
     //sensor reading
     float read_pressure(int sensor);
     float read_temperature(int sensor);
