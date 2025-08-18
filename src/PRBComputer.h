@@ -1,6 +1,6 @@
 // Last update: 11/03/2025
 #include "constant.h"
-#include "intranet_commands.h"
+#include "./2024_C_AV_INTRANET/intranet_commands.h"
 #include "PTE7300_I2C.h"
 
 
@@ -33,6 +33,7 @@ public:
     //getter
     int get_time_start_sq();
     int get_stage_sq();
+    systemState get_system_state();
 
     //ignition sequences
     bool ignition_sq1(int time);
@@ -40,7 +41,7 @@ public:
     bool ignition_sq3(int time);
     bool ignition_sq4(int time);
 
-    void manual_aboart();
+    void manual_abort();
 
     void send_update();
 };
