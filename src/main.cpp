@@ -22,57 +22,56 @@ void receiveEvent(int numBytes) {
 
     // TODO: add missing functions and check if current calls are correct
     switch (receivedCommand) {
-      case PRB_TIMESTAMP_MAIN:
-        Serial.println("Received PRB_TIMESTAMP_MAIN command");
+      case AV_NET_PRB_TIMESTAMP:
+        Serial.println("Received AV_NET_PRB_TIMESTAMP_MAIN command");
         break;
-      case PRB_WAKE_UP:
-        Serial.println("Received PRB_WAKE_UP command");
+      case AV_NET_PRB_WAKE_UP:
+        Serial.println("Received AV_NET_PRB_WAKE_UP command");
         break;
-      case PRB_IS_WOKEN_UP:
-        Serial.println("Received PRB_IS_WOKEN_UP command");
+      case AV_NET_PRB_IS_WOKEN_UP:
+        Serial.println("Received AV_NET_PRB_IS_WOKEN_UP command");
         break;
-      case PRB_CLEAR_TO_IGNITE:
-        Serial.println("Received PRB_CLEAR_TO_IGNITE command");
+      case AV_NET_PRB_CLEAR_TO_IGNITE:
+        Serial.println("Received AV_NET_PRB_CLEAR_TO_IGNITE command");
         break;
-      case PRB_FSM_PRB:
-        Serial.println("Received PRB_FSM_PRB command");
-        // responseValue = computer.get_stage_sq();
-        break;
-      case PRB_P_OIN:
-        Serial.println("Received PRB_P_OIN command");
+      case AV_NET_PRB_P_OIN:
+        Serial.println("Received AV_NET_PRB_P_OIN command");
         // responseValue = computer.read_pressure(P_OIN);
         break;
-      case PRB_T_OIN:
-        Serial.println("Received PRB_T_OIN command");
+      case AV_NET_PRB_T_OIN:
+        Serial.println("Received AV_NET_PRB_T_OIN command");
         // responseValue = computer.read_temperature(T_OIN);
         break;
-      case PRB_P_EIN:
-        Serial.println("Received PRB_P_EIN command");
-        // responseValue = computer.read_pressure(EIN_CH); 
+      case AV_NET_PRB_P_EIN:
+        Serial.println("Received AV_NET_PRB_P_EIN command");
+        // responseValue = computer.read_pressure(EIN_CH);    
         break;
-      case PRB_T_EIN:
-        Serial.println("Received PRB_T_EIN command");
+      case AV_NET_PRB_T_EIN:
+        Serial.println("Received AV_NET_PRB_T_EIN command");
         // responseValue = computer.read_temperature(T_EIN);
         break;
-      case PRB_P_CCC:
-        Serial.println("Received PRB_P_CCC command");
+
+      case AV_NET_PRB_P_CCC:
+        Serial.println("Received AV_NET_PRB_P_CCC command");
         // responseValue = computer.read_pressure(CCC_CH);
         break;
-      case PRB_T_CCC:
+    case AV_NET_PRB_T_CCC:
         Serial.println("Received PRB_T_CCC command");
         // responseValue = computer.read_temperature(CCC_CH);
         break;
-      case PRB_P_CIG:
-        Serial.println("Received PRB_P_CIG command");
-        // responseValue = computer.read_pressure(CIG_CH);
+case AV_NET_PRB_IGNITER:
+        Serial.println("Received AV_NET_PRB_IGNITER command");
+        // Handle igniter control
         break;
-      case PRB_T_CIG:
-        Serial.println("Received PRB_T_CIG command");
-        // responseValue = computer.read_temperature(CIG_CH);
+
+      case AV_NET_PRB_VALVES_STATE:
+        Serial.println("Received AV_NET_PRB_VALVES_STATE command");
         break;
-      case PRB_VALVES_STATE:
-        Serial.println("Received PRB_VALVES_STATE command");
-        break;
+      case AV_NET_PRB_ABORT:
+        computer.manual_abort();
+      case AV_NET_PRB_FSM_PRB:
+        responseValue = computer.get_system_state();
+        Wire.write((uint8_t*)&responseValue, sizeof(responseValue));
       default:
         Serial.println("Unknown command received");
         break;

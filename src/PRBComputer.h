@@ -1,6 +1,6 @@
 // Last update: 11/03/2025
 #include "constant.h"
-#include "intranet_commands.h"
+#include "./2024_C_AV_INTRANET/intranet_commands.h"
 #include "PTE7300_I2C.h"
 
 
@@ -47,7 +47,9 @@ public:
     void ignition_sq(int time);
     void shutdown_sq(int time);
 
+
     void request_manual_abort();
+
 
     void update(int time);
     void send_update();
