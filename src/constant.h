@@ -1,39 +1,98 @@
 // Last update: 11/03/2025
 #include <Arduino.h>
+#include "vector"
 
-// Constantes
-#define SLAVE_ADDR  0x0F
-#define ME_b        0x01
-#define MO_bC       0x02
+// PINs attribition on Teensy
+#define ME_b        37
+#define MO_bC       36
+#define IGNITER     35          //I-GP
+
+#define T_EIN       PIN_A12
+#define T_OIN       PIN_A13
+#define P_OIN       PIN_A6
+
+#define RESET       9
+#define RGB_RED     PIN_A7
+#define RGB_GREEN   PIN_A8
+#define RGB_BLUE    PIN_A9
+#define BUZZER      PIN_A1
+
+// Adresses I2C
+// #define SLAVE_ADDR  0x0F
+#define MUX_ADDR 0x70 // 0xE0
 #define SENS_ADDR   0x6C
 #define EIN_CH      0x01        //or 0x6C
 #define CCC_CH      0x02        //or 0x6C
 #define CIG_CH      0x04        //or 0x6C
-#define T_EIN       PIN_A17
-#define T_OIN       PIN_A16
-#define P_OIN       PIN_A13
-#define MOSFET      33          //I-GP
-#define VE_no       2
-#define VO_noC      3
-#define IE_nc       4
-#define IO_ncC      5
-#define SDA_SENSOR  25
-#define SCL_SENSOR  24
-#define RESET       9
 
-#define MUX_ADDR 0x70 // 0xE0
+// Ignition sequence constants
+// ================= Before Burn =================
+#define PRE_CHILL_DELAY 0
+#define STOP_CHILL_DELAY 10000
+#define IGNITION_DELAY 15000
+#define BURN_DELAY 16000
+#define PRESSURE_CHECK_DELAY 16100
 
-enum systemState
+// ================= After Burn =================
+#define CLOSE_MO_bC_DELAY 15000
+#define CLOSE_ME_b_DELAY 20000
+#define OPEN_MO_bC_DELAY 22000
+#define OPEN_ME_b_DELAY 50000
+#define OPEN_VE_VO_DELAY 150000
+
+// Pressure check
+#define PRESSURE_CHECK_THRESHOLD 25
+
+// Status 
+#define LED_TIMEOUT 1000 // 1 second
+
+enum prometheusFSM
 {
     IDLE,
     WAKEUP,
     TEST,
     SETUP,
     WAIT,
-    IGNITION_SQ1,
-    IGNITION_SQ2,
-    IGNITION_SQ3,
-    IGNITION_SQ4,
+    ARM,
+    IGNITION_SQ,
+    SHUTDOWN_SQ,
+    REQUEST_ABORT,
     ABORT,
     ERROR
+};
+
+enum ignitionStage
+{
+    GO,
+    PRE_CHILL,
+    POST_CHILL,
+    IGNITION,
+    LIFTOFF,
+    PRESSURE_CHECK,
+    NOGO
+};
+
+enum shutdownStage
+{
+    SLEEP,
+    CLOSE_MO_bC,
+    CLOSE_ME_b,
+    OPEN_MO_bC,
+    OPEN_ME_b,
+    SHUTOFF
+};
+
+const std::vector<int> time_sq_ignition = { 
+    0,
+    10000,
+    15000,
+    16000,
+    16100,
+};
+
+const std::vector<int> time_sq_shutdown = {
+    15000,
+    20000,
+    22000,
+    50000,
 };

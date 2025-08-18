@@ -2,6 +2,7 @@
 #include <Arduino.h>
 #include <Wire.h>
 #include "PRBComputer.h"
+#include "wiring.h"
 
 // Define I2C slave address for Raspberry Pi
 #define SLAVE_ADDR 0x08
@@ -78,25 +79,48 @@ case AV_NET_PRB_IGNITER:
   }
 }
 
-
 // I2C request handler
 void requestEvent() {
   Wire.write((uint8_t*)&responseValue, sizeof(responseValue));
 }
 
+void turn_on_sequence()
+{
+  digitalWrite(LED_BUILTIN, HIGH);
+
+  status_led_blue();
+  delay(500);
+  status_led_green();
+  delay(500);
+  status_led_red();
+  delay(500);
+  status_led_white();
+  tone(BUZZER, 440, 1000);
+  delay(1000);
+  noTone(BUZZER);
+  status_led_off();
+
+  digitalWrite(LED_BUILTIN, LOW);
+}
+
 void setup() {
-  // PIN configuration
-  pinMode(VE_no, OUTPUT);
-  pinMode(VO_noC, OUTPUT);
-  pinMode(IE_nc, OUTPUT);
-  pinMode(IO_ncC, OUTPUT);
-  pinMode(MOSFET, OUTPUT);
+
+  //PIN configuration
+  pinMode(ME_b, OUTPUT);
+  pinMode(MO_bC, OUTPUT);
+  pinMode(IGNITER, OUTPUT);
 
   pinMode(T_EIN, INPUT);
   pinMode(T_OIN, INPUT);
   pinMode(P_OIN, INPUT);
 
   pinMode(RESET, OUTPUT);
+  pinMode(RGB_RED, OUTPUT);
+  pinMode(RGB_GREEN, OUTPUT);
+  pinMode(RGB_BLUE, OUTPUT);
+  pinMode(BUZZER, OUTPUT);
+
+  // Activate MUX
   digitalWrite(RESET, HIGH);
 
   // I2C with Raspberry Pi (use default Wire)
@@ -119,33 +143,44 @@ void setup() {
   Serial.begin(115200); // For debugging
   Serial.println("PRB Computer started");
 
-  digitalWrite(LED_BUILTIN, HIGH); // Turn the LED on (HIGH is the voltage level)
-  delay(1000); // Wait for a second
-  digitalWrite(LED_BUILTIN, LOW); // Turn the LED off by making the voltage LOW
+  turn_on_sequence();
+
+  Serial.println("PRB Computer setup done");
+
+  computer.set_state(IGNITION_SQ);
+  computer.set_time_start_sq(millis());
+  computer.set_ignition_stage(GO);
 }
 
 PTE7300_I2C mySensor; // attach sensor
 int16_t DSP_T1;
+bool valve_opened = false;
+
+float EIN_temp = 0.0;
+float CCC_temp = 0.0;
+float EIN_press = 0.0;
+float CCC_press = 0.0;
+bool blue_led_state = false;
+
+bool valve_open = false;
+int count_cycles = 0;
 
 void loop() {
-  delay(100);
+
+  // computer.update(millis());
+
+  // config_rgb_led_1(computer.get_ignition_stage());
+  // config_rgb_led_2(computer.get_shutdown_stage());
+
+  // test_read_sensors(&computer);
+  // test_read_pt1000(&computer);
+  // test_read_kulite(&computer);
+
+  digitalWrite(RGB_BLUE, blue_led_state ? HIGH : LOW);
+  blue_led_state = !blue_led_state;
+
+  delay(1000);
 }
 
-// float temp = 0.0;
-//   float press = 0.0;
-
-//   temp = computer.read_temperature(EIN_CH);
-//   Serial.print("Temperature EIN: ");
-//   Serial.print(temp);
-//   Serial.print(" °C\t");
-//   press = computer.read_pressure(EIN_CH);
-//   Serial.print("Pressure EIN: ");
-//   Serial.println(press);
-
-//   temp = computer.read_temperature(CCC_CH);
-//   Serial.print("Temperature CCC: ");
-//   Serial.print(temp);
-//   Serial.print(" °C\t");
-//   press = computer.read_pressure(CCC_CH);
-//   Serial.print("Pressure CCC: ");
-//   Serial.println(press);
+  // //Stress test
+  // 
