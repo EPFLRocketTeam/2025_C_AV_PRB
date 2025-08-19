@@ -16,6 +16,10 @@ private:
     int16_t value_sensor;
     bool status_led;
     int time_led;
+    float ein_temp;
+    float ein_press;
+    float ccc_temp;
+    float ccc_press;
 public:
     PRBComputer(prometheusFSM);
     ~PRBComputer();
@@ -35,6 +39,10 @@ public:
     prometheusFSM get_state();
     ignitionStage get_ignition_stage();
     shutdownStage get_shutdown_stage();
+    float get_ein_temp();
+    float get_ein_press();
+    float get_ccc_temp();
+    float get_ccc_press();
 
     //setters
     void set_time_start_sq(int time);

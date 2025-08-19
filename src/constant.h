@@ -18,12 +18,12 @@
 #define BUZZER      PIN_A1
 
 // Adresses I2C
-// #define SLAVE_ADDR  0x0F
-#define MUX_ADDR 0x70 // 0xE0
-#define SENS_ADDR   0x6C
-#define EIN_CH      0x01        //or 0x6C
-#define CCC_CH      0x02        //or 0x6C
-#define CIG_CH      0x04        //or 0x6C
+#define SLAVE_ADDR  0x0F
+#define MUX_ADDR    0x70 // 0xE0
+#define SENS_ADDR   0x6C        //or 0x6C
+#define EIN_CH      0x01        // channel 1
+#define CCC_CH      0x02        // channel 2
+#define CIG_CH      0x04        // channel 3
 
 // Ignition sequence constants
 // ================= Before Burn =================
@@ -56,7 +56,6 @@ enum prometheusFSM
     ARM,
     IGNITION_SQ,
     SHUTDOWN_SQ,
-    REQUEST_ABORT,
     ABORT,
     ERROR
 };

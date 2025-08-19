@@ -158,6 +158,10 @@ int PRBComputer::get_time_start_sq() { return time_start_ignition;}
 prometheusFSM PRBComputer::get_state() { return state; }
 ignitionStage PRBComputer::get_ignition_stage() { return ignition_stage; }
 shutdownStage PRBComputer::get_shutdown_stage() { return shutdown_stage; }
+float PRBComputer::get_ein_temp() { return ein_temp; }
+float PRBComputer::get_ein_press() { return ein_press; }
+float PRBComputer::get_ccc_temp() { return ccc_temp; }
+float PRBComputer::get_ccc_press() { return ccc_press; }
 
 // ========= setter =========
 void PRBComputer::set_state(prometheusFSM new_state) { state = new_state; }
@@ -205,6 +209,7 @@ void PRBComputer::ignition_sq(int time)
     {
         open_valve(MO_bC);
         open_valve(ME_b);
+        close_valve(IGNITER);
         ignition_stage = PRESSURE_CHECK;
     }
 
@@ -220,7 +225,7 @@ void PRBComputer::ignition_sq(int time)
             shutdown_stage = CLOSE_MO_bC;
             time_start_shutdown = time;
         } else {
-            state = REQUEST_ABORT;
+            state = ABORT;
         }
     }
 }
@@ -269,6 +274,7 @@ void PRBComputer::shutdown_sq(int time)
 void PRBComputer::request_manual_abort()
 {
     //resquest aboart from FC
+
 }
 
 // ========= send update =========
@@ -295,6 +301,11 @@ void PRBComputer::update(int time)
     switch (state)
     {
         case IDLE:
+            ein_temp = read_temperature(EIN_CH);
+            ein_press = read_pressure(EIN_CH);
+            ccc_temp = read_temperature(CCC_CH);
+            ccc_press = read_pressure(CCC_CH);
+
             if (!status_led && time - time_led >= LED_TIMEOUT) {
                 status_led_teal();
                 time_led = time;
@@ -304,6 +315,7 @@ void PRBComputer::update(int time)
                 time_led = time;
                 status_led = false;
             }
+
             break;
         case WAKEUP:
             tone(BUZZER, 480, 1000);
@@ -338,7 +350,7 @@ void PRBComputer::update(int time)
         case SHUTDOWN_SQ:
             shutdown_sq(time);
             break;
-        case REQUEST_ABORT:
+        case ABORT:
             status_led_red();
             tone(BUZZER, 440, 2500);
             request_manual_abort();
@@ -477,15 +489,21 @@ void status_led_off() {
 
 void status_led_blue() {
     digitalWrite(RGB_BLUE, HIGH);
+    digitalWrite(RGB_RED, LOW);
+    digitalWrite(RGB_GREEN, LOW);
 }
 
 void status_led_green() {
     digitalWrite(RGB_GREEN, HIGH);
+    digitalWrite(RGB_RED, LOW);
+    digitalWrite(RGB_BLUE, LOW);
 }
 
 
 void status_led_red() {
     digitalWrite(RGB_RED, HIGH);
+    digitalWrite(RGB_GREEN, LOW);
+    digitalWrite(RGB_BLUE, LOW);
 }
 
 void status_led_white() {
@@ -497,14 +515,17 @@ void status_led_white() {
 void status_led_orange() {
     digitalWrite(RGB_RED, HIGH);
     digitalWrite(RGB_GREEN, HIGH);
+    digitalWrite(RGB_BLUE, LOW);
 }
 
 void status_led_purple() {
     digitalWrite(RGB_RED, HIGH);
     digitalWrite(RGB_BLUE, HIGH);
+    digitalWrite(RGB_GREEN, LOW);
 }
 
 void status_led_teal() {
     digitalWrite(RGB_GREEN, HIGH);
     digitalWrite(RGB_BLUE, HIGH);
+    digitalWrite(RGB_RED, LOW);
 }
