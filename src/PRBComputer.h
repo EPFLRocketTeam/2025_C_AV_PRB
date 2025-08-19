@@ -15,7 +15,13 @@ private:
     PTE7300_I2C my_sensor;
     int16_t value_sensor;
     bool status_led;
+    bool ME_state;
+    bool MO_state;
+    bool IGNITER_state;
     int time_led;
+    int time_print;
+    float oin_temp;
+    float oin_press;
     float ein_temp;
     float ein_press;
     float ccc_temp;
@@ -33,16 +39,19 @@ public:
     float read_temperature(int sensor);
     bool check_pressure(int sensor);
 
-    
     //getters
     int get_time_start_sq();
     prometheusFSM get_state();
     ignitionStage get_ignition_stage();
     shutdownStage get_shutdown_stage();
+    float get_oin_temp();
+    float get_oin_press();
     float get_ein_temp();
     float get_ein_press();
     float get_ccc_temp();
     float get_ccc_press();
+    bool get_valve_state(int valve);
+    float get_sensor_value(sensorName sensor);
 
     //setters
     void set_time_start_sq(int time);
@@ -55,9 +64,7 @@ public:
     void ignition_sq(int time);
     void shutdown_sq(int time);
 
-
     void request_manual_abort();
-
 
     void update(int time);
     void send_update();

@@ -53,7 +53,7 @@ enum prometheusFSM
     TEST,
     SETUP,
     WAIT,
-    ARM,
+    CLEAR_TO_IGNITE,
     IGNITION_SQ,
     SHUTDOWN_SQ,
     ABORT,
@@ -79,6 +79,16 @@ enum shutdownStage
     OPEN_MO_bC,
     OPEN_ME_b,
     SHUTOFF
+};
+
+enum sensorName
+{
+    P_OIN_SENS,
+    T_OIN_SENS,
+    P_EIN_SENS,
+    T_EIN_SENS,
+    P_CCC_SENS,
+    T_CCC_SENS
 };
 
 const std::vector<int> time_sq_ignition = { 

@@ -14,6 +14,10 @@ PRBComputer::PRBComputer(prometheusFSM state)
     shutdown_stage = SLEEP;
     status_led = false;
     time_led = 0;
+    time_print = 0;
+    ME_state = false;
+    MO_state = false;
+    IGNITER_state = false;
 }
 
 PRBComputer::~PRBComputer()
@@ -21,14 +25,21 @@ PRBComputer::~PRBComputer()
     state = ERROR;
 }
 
-// ========= valve and motor control =========
+// ========= valve control =========
 void PRBComputer::open_valve(int valve)
 {
     switch (valve)
     {
     case ME_b:
+        ME_state = true;
+        digitalWrite(valve, HIGH);
+        break;
     case MO_bC:
+        MO_state = true;
+        digitalWrite(valve, HIGH);
+        break;
     case IGNITER:
+        IGNITER_state = true;
         digitalWrite(valve, HIGH);
         break;
 
@@ -42,8 +53,15 @@ void PRBComputer::close_valve(int valve)
     switch (valve)
     {
     case ME_b:
+        ME_state = false;
+        digitalWrite(valve, LOW);
+        break;
     case MO_bC:
+        MO_state = false;
+        digitalWrite(valve, LOW);
+        break;
     case IGNITER:
+        IGNITER_state = false;
         digitalWrite(valve, LOW);
         break;
     
@@ -70,7 +88,7 @@ float PRBComputer::read_pressure(int sensor)
         float voltage = (rawValue / 4095.0) * 3.3; // Assuming a 12-bit ADC and 3.3V reference
         float v_sensor = voltage / 33;
         press = (v_sensor * 1000.0) * (max_kulite_value / 100.0);
-        Serial.println("voltage: " + String(voltage));
+        // Serial.println("voltage: " + String(voltage));
         //read analog pressure
         break;
     }
@@ -158,10 +176,66 @@ int PRBComputer::get_time_start_sq() { return time_start_ignition;}
 prometheusFSM PRBComputer::get_state() { return state; }
 ignitionStage PRBComputer::get_ignition_stage() { return ignition_stage; }
 shutdownStage PRBComputer::get_shutdown_stage() { return shutdown_stage; }
+float PRBComputer::get_oin_temp() { return oin_temp; }
+float PRBComputer::get_oin_press() { return oin_press; }
 float PRBComputer::get_ein_temp() { return ein_temp; }
 float PRBComputer::get_ein_press() { return ein_press; }
 float PRBComputer::get_ccc_temp() { return ccc_temp; }
 float PRBComputer::get_ccc_press() { return ccc_press; }
+bool PRBComputer::get_valve_state(int valve)
+{
+    switch (valve)
+    {
+    case ME_b:
+        return ME_state;
+    case MO_bC:
+        return MO_state;
+    case IGNITER:
+        return IGNITER_state;
+    default:
+        return false;
+    }
+}
+
+float PRBComputer::get_sensor_value(sensorName sensor) {
+    uint32_t value = 0;
+    float float_value = 0.0f;
+    switch (sensor)
+    {
+    case P_OIN_SENS:
+        float_value = oin_press;
+        value = round(float_value*1000);
+        break;
+    case T_OIN_SENS:
+        float_value = oin_temp;
+        value = round(float_value*1000);
+        break;
+    case P_EIN_SENS:
+        float_value = ein_press;
+        value = round(float_value*1000);
+        break;
+    case T_EIN_SENS:
+        float_value = ein_temp;
+        value = round(float_value*1000);
+        break;
+    case P_CCC_SENS:
+        float_value = ccc_press;
+        value = round(float_value*1000);
+        break;
+    case T_CCC_SENS:
+        float_value = ccc_temp;
+        value = round(float_value*1000);
+        break;
+    default:
+        break;
+    }
+
+    Serial.print("Sensor value in float ");
+    Serial.print(float_value);
+    Serial.print(" / in integer: ");
+    Serial.println(value);
+    return float_value;
+}
 
 // ========= setter =========
 void PRBComputer::set_state(prometheusFSM new_state) { state = new_state; }
@@ -301,11 +375,6 @@ void PRBComputer::update(int time)
     switch (state)
     {
         case IDLE:
-            ein_temp = read_temperature(EIN_CH);
-            ein_press = read_pressure(EIN_CH);
-            ccc_temp = read_temperature(CCC_CH);
-            ccc_press = read_pressure(CCC_CH);
-
             if (!status_led && time - time_led >= LED_TIMEOUT) {
                 status_led_teal();
                 time_led = time;
@@ -318,7 +387,7 @@ void PRBComputer::update(int time)
 
             break;
         case WAKEUP:
-            tone(BUZZER, 480, 1000);
+            // tone(BUZZER, 480, 1000);
             // Handle WAKEUP state if needed, otherwise do nothing
             break;
         case TEST:
@@ -332,7 +401,7 @@ void PRBComputer::update(int time)
             status_led_off();
             break;
         
-        case ARM:
+        case CLEAR_TO_IGNITE:
             if (!status_led && time - time_led >= LED_TIMEOUT) {
                 status_led_orange();
                 time_led = time;
@@ -352,13 +421,38 @@ void PRBComputer::update(int time)
             break;
         case ABORT:
             status_led_red();
-            tone(BUZZER, 440, 2500);
+            // tone(BUZZER, 440, 2500);
             request_manual_abort();
             break;
 
         default:
             break;
     }
+
+    ein_temp = read_temperature(EIN_CH);
+    ein_press = read_pressure(EIN_CH);
+    ccc_temp = read_temperature(CCC_CH);
+    ccc_press = read_pressure(CCC_CH);
+    oin_temp = read_temperature(T_OIN);
+    oin_press = read_pressure(P_OIN);
+
+    if (time - time_print >= LED_TIMEOUT) {
+        Serial.print("EIN T°: ");
+        Serial.println(ein_temp);
+        Serial.print("EIN P: ");
+        Serial.println(ein_press);
+        Serial.print("CCC T°: ");
+        Serial.println(ccc_temp);
+        Serial.print("CCC P: ");
+        Serial.println(ccc_press);
+        Serial.print("OIN T°: ");
+        Serial.println(oin_temp);
+        Serial.print("OIN P: ");
+        Serial.println(oin_press);
+        time_print = time;
+
+    }
+
 }
 
 // ================ testing ================
