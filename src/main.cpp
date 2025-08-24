@@ -1,121 +1,116 @@
-// 
+// Last update: 19/08/2025
 #include <Arduino.h>
 #include <Wire.h>
 #include "PRBComputer.h"
 #include "wiring.h"
 
-// // Define I2C slave address for Raspberry Pi
-// #define SLAVE_ADDR 0x08
-
 PRBComputer computer(IDLE);
 
 // Variables for communication
-volatile uint8_t received_buffer[4];
-volatile uint8_t received_command = 0;
+volatile uint8_t received_buff[4];
+volatile uint8_t received_cmd = 0;
 
-volatile float responseValue_float = 0.0; // Hardcoded response
-volatile uint32_t responseValue_int = 0x00; // Hardcoded response
-volatile bool sent_int_response = false;
+volatile float resp_val_float = 0.0; // Hardcoded response
+volatile uint32_t resp_val_int = 0x00; // Hardcoded response
+volatile bool is_resp_int = false;
 
 // I2C receive handler
 void receiveEvent(int numBytes) {
-  // Wire2.endTransmission();
-  // Clear buffer
-  for (int i = 0; i < 4; ++i) received_buffer[i] = 0;
-
-  Serial.print("Received I2C command, nb bytes:");
-  Serial.println(numBytes);
+  for (int i = 0; i < 4; ++i) received_buff[i] = 0;
 
   int bytesRead = 0;
   if (numBytes >= 1) {
     if (Wire1.available()) {
-      received_command = Wire1.read(); // Read the command
+      received_cmd = Wire1.read(); // Read the command
       bytesRead++;
     }
 
+    #ifdef DEBUG
+    Serial.print("Received I2C command, nb bytes:");
+    Serial.println(numBytes);
     Serial.print("(receiveEvent) Received command: ");
-    Serial.println(received_command);
+    Serial.println(received_cmd);
+    #endif
 
     if (numBytes == 1) return;
 
     for (int i = 0; i < 4 && bytesRead < numBytes && Wire1.available(); ++i) {
-      received_buffer[i] = Wire1.read();
+      received_buff[i] = Wire1.read();
       bytesRead++;
     }
 
+    #ifdef DEBUG
     Serial.print("Received I2C bytes: 0x");
     for (int i = 0; i < 4; ++i) {
-      Serial.print(received_buffer[i], HEX);
+      Serial.print(received_buff[i], HEX);
       if (i < 3) Serial.print(", ");
     }
     Serial.println(); 
+    #endif
+    
 
     
     // Set responseValue according to command, but do not write here
-    switch (received_command) {
+    switch (received_cmd) {
       case AV_NET_PRB_TIMESTAMP: {
-        status_led_white();
+        status_led(WHITE);
         break;
       }
 
       case AV_NET_PRB_WAKE_UP:
         Serial.println("Received AV_NET_PRB_WAKE_UP command");
-        status_led_teal();
+        status_led(TEAL);
         computer.set_state(WAKEUP);
         break;
 
       case AV_NET_PRB_CLEAR_TO_IGNITE:
         Serial.println("Received AV_NET_PRB_CLEAR_TO_IGNITE command");
-        if (received_buffer[0] == AV_NET_CMD_ON) {
-          status_led_green();
+        if (received_buff[0] == AV_NET_CMD_ON) {
+          status_led(GREEN);
           computer.set_state(CLEAR_TO_IGNITE);
         } else {
-          status_led_red();
+          status_led(RED);
         }
         break;
 
       case AV_NET_PRB_VALVES_STATE: {
-        status_led_purple();
+        status_led(PURPLE);
         Serial.println("Received AV_NET_PRB_VALVES_STATE command");
-        uint8_t valves_ME_State = received_buffer[0];
-        uint8_t valves_MO_State = received_buffer[1];
+        uint8_t valves_ME_State = received_buff[0];
+        uint8_t valves_MO_State = received_buff[1];
 
         if (valves_ME_State == AV_NET_CMD_ON) {
           computer.open_valve(ME_b);
-          status_led_green();
+          status_led(GREEN);
         } else if (valves_ME_State == AV_NET_CMD_OFF) {
           computer.close_valve(ME_b);
-          status_led_orange();
+          status_led(ORANGE);
         } else {
-          status_led_red();
+          status_led(RED);
         }
 
         if (valves_MO_State == AV_NET_CMD_ON) {
           computer.open_valve(MO_bC);
-          status_led_green();
+          status_led(GREEN);
         } else if (valves_MO_State == AV_NET_CMD_OFF) {
           computer.close_valve(MO_bC);
-          status_led_orange();
+          status_led(ORANGE);
         } else {
-          status_led_red();
+          status_led(RED);
         }
         break;
       }
 
-      case AV_NET_PRB_IGNITER: {
+      case AV_NET_PRB_IGNITER: 
         Serial.println("Received AV_NET_PRB_IGNITER command");
-        prometheusFSM state = computer.get_state();
-        if (state == CLEAR_TO_IGNITE && received_buffer[0] == AV_NET_CMD_ON) {
-          computer.set_state(IGNITION_SQ);
-          computer.set_time_start_sq(millis());
-          computer.set_ignition_stage(GO);
+        if (computer.get_state() == CLEAR_TO_IGNITE && received_buff[0] == AV_NET_CMD_ON) {
+          computer.ignite(millis());
         }
         break;
-      }
 
       case AV_NET_PRB_ABORT:
         computer.set_state(ABORT);
-        status_led_red();
+        status_led(RED);
         break;
 
       default:
@@ -133,116 +128,99 @@ void requestEvent() {
   tone(BUZZER, 440, 1000); // Indicate request received
   
   if (Wire1.available()) {
-    received_command = Wire1.read(); // Read the command
+    received_cmd = Wire1.read(); // Read the command
   }
 
   Serial.print("(requestEvent) Received command: ");
-  Serial.println(received_command);
+  Serial.println(received_cmd);
+
+  prb_memory_t memory = computer.get_memory();
 
 
-  switch (received_command)
+  switch (received_cmd)
   {
   case AV_NET_PRB_IS_WOKEN_UP:
     Serial.println("Received AV_NET_PRB_IS_WOKEN_UP command");
-    status_led_purple();
+    status_led(PURPLE);
     if (computer.get_state() == WAKEUP) {
-      responseValue_int = AV_NET_CMD_ON;
+      resp_val_int = AV_NET_CMD_ON;
     } else {
-      responseValue_int = AV_NET_CMD_OFF;
+      resp_val_int = AV_NET_CMD_OFF;
     }
-    sent_int_response = true;
+    is_resp_int = true;
     break;
 
   case AV_NET_PRB_P_OIN:
       Serial.println("Received AV_NET_PRB_P_OIN command");
-      responseValue_float = computer.get_sensor_value(P_OIN_SENS);
-      sent_int_response = false; // We are sending a float response
+      resp_val_float = memory.oin_press;
+      is_resp_int = false; // We are sending a float response
       break;
 
   case AV_NET_PRB_T_OIN:
       Serial.println("Received AV_NET_PRB_T_OIN command");
-      responseValue_float = computer.get_sensor_value(T_OIN_SENS);
-      sent_int_response = false; // We are sending a float response
+      resp_val_float = memory.oin_temp;
+      is_resp_int = false; // We are sending a float response
       break;
 
     case AV_NET_PRB_P_EIN:
       Serial.println("Received AV_NET_PRB_P_EIN command");
-      responseValue_float = computer.get_sensor_value(P_EIN_SENS);
-      sent_int_response = false; // We are sending a float response
+      resp_val_float = memory.ein_press;
+      is_resp_int = false; // We are sending a float response
       break;
 
     case AV_NET_PRB_T_EIN: {
       Serial.println("Received AV_NET_PRB_T_EIN command");
-      responseValue_float = computer.get_sensor_value(T_EIN_SENS);
-      sent_int_response = false; // We are sending a float response
+      resp_val_float = memory.ein_temp;
+      is_resp_int = false; // We are sending a float response
       break;
     }
 
     case AV_NET_PRB_P_CCC:
       Serial.println("Received AV_NET_PRB_P_CCC command");
-      responseValue_float = computer.get_sensor_value(P_CCC_SENS);
-      sent_int_response = false; // We are sending a float response
+      resp_val_float = memory.ccc_press;
+      is_resp_int = false; // We are sending a float response
       break;
 
     case AV_NET_PRB_T_CCC:
       Serial.println("Received AV_NET_PRB_T_CCC command");
-      responseValue_float = computer.get_sensor_value(T_CCC_SENS);
-      sent_int_response = false; // We are sending a float response
+      resp_val_float = memory.ccc_temp;
+      is_resp_int = false; // We are sending a float response
       break;
 
     case AV_NET_PRB_VALVES_STATE: {
-      status_led_green();
+      status_led(GREEN);
       Serial.println("Received AV_NET_PRB_VALVES_STATE read command");
-      bool ME_state = computer.get_valve_state(ME_b);
-      bool MO_state = computer.get_valve_state(MO_bC);
+      bool ME_state = memory.ME_state;
+      bool MO_state = memory.MO_state;
 
       uint8_t response_ME = (ME_state) ? AV_NET_CMD_ON : AV_NET_CMD_OFF;
       uint8_t response_MO = (MO_state) ? AV_NET_CMD_ON : AV_NET_CMD_OFF;
 
-      responseValue_int = (response_MO << 8) | response_ME;
-      sent_int_response = true;
+      resp_val_int = (response_MO << 8) | response_ME;
+      is_resp_int = true;
       break;
     }
 
     case AV_NET_PRB_FSM_PRB:
-      responseValue_int = computer.get_state();
-      sent_int_response = true;
-      status_led_blue();
+      resp_val_int = computer.get_state();
+      is_resp_int = true;
+      status_led(BLUE);
       break;
   
   default:
     break;
   }
   
-  if (sent_int_response) {
+  if (is_resp_int) {
     Serial.print("Sending int response value (HEX): ");
-    Serial.println(responseValue_int, HEX);
-    Wire1.write((uint8_t*)&responseValue_int, AV_NET_XFER_SIZE);
+    Serial.println(resp_val_int, HEX);
+    Wire1.write((uint8_t*)&resp_val_int, AV_NET_XFER_SIZE);
   } else {
     Serial.print("Sending float response value (HEX): ");
-    Serial.println(responseValue_float, HEX);
-    Wire1.write((uint8_t*)&responseValue_float, AV_NET_XFER_SIZE);
+    Serial.println(resp_val_float, HEX);
+    Wire1.write((uint8_t*)&resp_val_float, AV_NET_XFER_SIZE);
   }
   Wire1.flush(); // Ensure all data is sent
-}
-
-void turn_on_sequence()
-{
-  digitalWrite(LED_BUILTIN, HIGH);
-
-  status_led_blue();
-  delay(500);
-  status_led_green();
-  delay(500);
-  status_led_red();
-  delay(500);
-  status_led_white();
-  tone(BUZZER, 440, 1000);
-  delay(1000);
-  noTone(BUZZER);
-  status_led_off();
-
-  digitalWrite(LED_BUILTIN, LOW);
 }
 
 void setup() {
@@ -285,10 +263,6 @@ void setup() {
   turn_on_sequence();
 
   Serial.println("PRB Computer setup done");
-
-  // computer.set_state(IGNITION_SQ);
-  // computer.set_time_start_sq(millis());
-  // computer.set_ignition_stage(GO);
 }
 
 // PTE7300_I2C mySensor; // attach sensor

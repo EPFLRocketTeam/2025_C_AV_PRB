@@ -1,6 +1,8 @@
-// Last update: 11/03/2025
+// Last update: 19/08/2025
 #include <Arduino.h>
 #include "vector"
+
+#define DEBUG
 
 // PINs attribition on Teensy
 #define ME_b        37
@@ -56,6 +58,7 @@ enum prometheusFSM
     CLEAR_TO_IGNITE,
     IGNITION_SQ,
     SHUTDOWN_SQ,
+    REQUEST_ABORT,
     ABORT,
     ERROR
 };
@@ -84,24 +87,40 @@ enum shutdownStage
 enum sensorName
 {
     P_OIN_SENS,
-    T_OIN_SENS,
+    T_OIN_PT1000,
+    T_EIN_PT1000,
     P_EIN_SENS,
     T_EIN_SENS,
     P_CCC_SENS,
-    T_CCC_SENS
+    T_CCC_SENS,
 };
 
-const std::vector<int> time_sq_ignition = { 
-    0,
-    10000,
-    15000,
-    16000,
-    16100,
+// const std::vector<int> time_sq_ignition = { 
+//     0,
+//     10000,
+//     15000,
+//     16000,
+//     16100,
+// };
+
+// const std::vector<int> time_sq_shutdown = {
+//     15000,
+//     20000,
+//     22000,
+//     50000,
+// };
+
+struct RGBColor {
+    int red;
+    int green;
+    int blue;
 };
 
-const std::vector<int> time_sq_shutdown = {
-    15000,
-    20000,
-    22000,
-    50000,
-};
+const RGBColor RED    = {HIGH, LOW, LOW};
+const RGBColor GREEN  = {LOW, HIGH, LOW};
+const RGBColor BLUE   = {LOW, LOW, HIGH};
+const RGBColor WHITE  = {HIGH, HIGH, HIGH};
+const RGBColor PURPLE = {HIGH, LOW, HIGH};
+const RGBColor ORANGE = {HIGH, HIGH, LOW};
+const RGBColor TEAL   = {LOW, HIGH, HIGH};
+const RGBColor OFF    = {LOW, LOW, LOW};
