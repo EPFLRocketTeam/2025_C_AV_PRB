@@ -27,7 +27,7 @@ typedef struct prb_memory_t
 class PRBComputer
 {
 private:
-    prometheusFSM state;
+    prbFSM state;
     ignitionStage ignition_stage;
     shutdownStage shutdown_stage;
     abortStage abort_stage;
@@ -54,7 +54,7 @@ private:
     void stress_test(int cycles, int valve);
 
 public:
-    PRBComputer(prometheusFSM);
+    PRBComputer(prbFSM);
     ~PRBComputer();
 
     //valve control
@@ -63,12 +63,12 @@ public:
 
     //getters
     prb_memory_t get_memory();
-    prometheusFSM get_state();
+    prbFSM get_state();
     ignitionStage get_ignition_stage();
     shutdownStage get_shutdown_stage();
 
     //setters
-    void set_state(prometheusFSM new_state);
+    void set_state(prbFSM new_state);
 
     void ignite(int time);
 

@@ -53,20 +53,6 @@
 // Status 
 #define LED_TIMEOUT 1000 // 1 second
 
-enum prometheusFSM
-{
-    IDLE,
-    WAKEUP,
-    SETUP,
-    WAIT,
-    CLEAR_TO_IGNITE,
-    IGNITION_SQ,
-    SHUTDOWN_SQ,
-    REQUEST_ABORT,
-    ABORT,
-    ERROR
-};
-
 enum ignitionStage
 {
     GO,

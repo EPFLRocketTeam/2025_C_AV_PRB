@@ -5,7 +5,7 @@
 
 #define TEST_WITHOUT_PRESSURE
 
-PRBComputer::PRBComputer(prometheusFSM state)
+PRBComputer::PRBComputer(prbFSM state)
 {
     state = state;
     memory.time_start_ignition = 0;
@@ -159,13 +159,13 @@ bool PRBComputer::check_pressure(int sensor) {
 
 // ========= getter =========
 prb_memory_t PRBComputer::get_memory() { return memory; }
-prometheusFSM PRBComputer::get_state() { return state; }
+prbFSM PRBComputer::get_state() { return state; }
 ignitionStage PRBComputer::get_ignition_stage() { return ignition_stage; }
 shutdownStage PRBComputer::get_shutdown_stage() { return shutdown_stage; }
 
 
 // ========= setter =========
-void PRBComputer::set_state(prometheusFSM new_state) { state = new_state; }
+void PRBComputer::set_state(prbFSM new_state) { state = new_state; }
 
 
 // ========= ignition sequences =========
@@ -329,10 +329,6 @@ void PRBComputer::update(int time)
                 memory.status_led = false;
             }
 
-            break;
-        case WAKEUP:
-            // tone(BUZZER, 480, 1000);
-            // Handle WAKEUP state if needed, otherwise do nothing
             break;
         
         case CLEAR_TO_IGNITE:

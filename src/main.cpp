@@ -60,7 +60,6 @@ void receiveEvent(int numBytes) {
       case AV_NET_PRB_WAKE_UP:
         Serial.println("Received AV_NET_PRB_WAKE_UP command");
         status_led(TEAL);
-        computer.set_state(WAKEUP);
         break;
 
       case AV_NET_PRB_CLEAR_TO_IGNITE:
@@ -140,11 +139,7 @@ void requestEvent() {
   case AV_NET_PRB_IS_WOKEN_UP:
     Serial.println("Received AV_NET_PRB_IS_WOKEN_UP command");
     status_led(PURPLE);
-    if (computer.get_state() == WAKEUP) {
-      resp_val_int = AV_NET_CMD_ON;
-    } else {
-      resp_val_int = AV_NET_CMD_OFF;
-    }
+    resp_val_int = AV_NET_CMD_ON;
     is_resp_int = true;
     break;
 
