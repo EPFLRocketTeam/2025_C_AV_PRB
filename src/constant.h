@@ -28,19 +28,24 @@
 #define CIG_CH      0x04        // channel 3
 
 // Ignition sequence constants
-// ================= Before Burn =================
+// ================= Ignition sequence timing =================
 #define PRE_CHILL_DELAY 0
 #define STOP_CHILL_DELAY 10000
 #define IGNITION_DELAY 15000
 #define BURN_DELAY 16000
 #define PRESSURE_CHECK_DELAY 16100
 
-// ================= After Burn =================
+// ================= Shutdown sequence timing =================
+#define STOP_IGNITER_DELAY 5000
 #define CLOSE_MO_bC_DELAY 15000
 #define CLOSE_ME_b_DELAY 20000
 #define OPEN_MO_bC_DELAY 22000
 #define OPEN_ME_b_DELAY 50000
 #define OPEN_VE_VO_DELAY 150000
+
+// ================= Abort sequence timing =================
+#define ABORT_MO_DELAY 0
+#define ABORT_ME_DELAY 1000
 
 // Pressure check
 #define PRESSURE_CHECK_THRESHOLD 25
@@ -52,7 +57,6 @@ enum prometheusFSM
 {
     IDLE,
     WAKEUP,
-    TEST,
     SETUP,
     WAIT,
     CLEAR_TO_IGNITE,
@@ -77,6 +81,7 @@ enum ignitionStage
 enum shutdownStage
 {
     SLEEP,
+    STOP_IGNITER,
     CLOSE_MO_bC,
     CLOSE_ME_b,
     OPEN_MO_bC,
@@ -84,30 +89,22 @@ enum shutdownStage
     SHUTOFF
 };
 
-enum sensorName
+
+enum abortStage
 {
-    P_OIN_SENS,
-    T_OIN_PT1000,
-    T_EIN_PT1000,
-    P_EIN_SENS,
-    T_EIN_SENS,
-    P_CCC_SENS,
-    T_CCC_SENS,
+    ABORT_MO,
+    ABORT_ME
 };
 
-// const std::vector<int> time_sq_ignition = { 
-//     0,
-//     10000,
-//     15000,
-//     16000,
-//     16100,
-// };
-
-// const std::vector<int> time_sq_shutdown = {
-//     15000,
-//     20000,
-//     22000,
-//     50000,
+// enum sensorName
+// {
+//     P_OIN_SENS,
+//     T_OIN_PT1000,
+//     T_EIN_PT1000,
+//     P_EIN_SENS,
+//     T_EIN_SENS,
+//     P_CCC_SENS,
+//     T_CCC_SENS,
 // };
 
 struct RGBColor {

@@ -7,6 +7,7 @@ typedef struct prb_memory_t
 {
     int time_start_ignition;
     int time_start_shutdown;
+    int time_start_abort;
     bool status_led;
     bool ME_state;
     bool MO_state;
@@ -14,8 +15,9 @@ typedef struct prb_memory_t
     int time_led;
     int time_print;
     float oin_temp;
+    float ein_temp_pt1000;
     float oin_press;
-    float ein_temp;
+    float ein_temp_sensata;
     float ein_press;
     float ccc_temp;
     float ccc_press;
@@ -28,6 +30,7 @@ private:
     prometheusFSM state;
     ignitionStage ignition_stage;
     shutdownStage shutdown_stage;
+    abortStage abort_stage;
 
     PTE7300_I2C my_sensor;
 
@@ -41,17 +44,14 @@ private:
     //valves sequences
     void ignition_sq(int time);
     void shutdown_sq(int time);
+    void abort_sq(int time);
     
     // status LED configuration
     void status_led_ignition();
     void status_led_shutdown();
 
     // testing
-    std::vector<float> test_read_sensors();
-    std::vector<float> test_read_pt1000();
-    float test_read_kulite();
     void stress_test(int cycles, int valve);
-    void test_valves();
 
 public:
     PRBComputer(prometheusFSM);
@@ -71,8 +71,6 @@ public:
     void set_state(prometheusFSM new_state);
 
     void ignite(int time);
-
-    void request_manual_abort();
 
     void update(int time);
 };

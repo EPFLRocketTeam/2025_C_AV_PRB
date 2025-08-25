@@ -206,23 +206,22 @@ void PRBComputer::ignition_sq(int time)
     {
         open_valve(MO_bC);
         open_valve(ME_b);
-        close_valve(IGNITER);
+        // close_valve(IGNITER);
         ignition_stage = PRESSURE_CHECK;
     }
 
     //after 100ms
     if (ignition_stage == PRESSURE_CHECK && time - memory.time_start_ignition >= PRESSURE_CHECK_DELAY)
     {
-        // Perform pressure check
-        bool test_result = check_pressure(CCC_CH);
-
-        if (test_result) {
+        if (check_pressure(CCC_CH)) {
             state = SHUTDOWN_SQ;
             ignition_stage = NOGO;
-            shutdown_stage = CLOSE_MO_bC;
+            shutdown_stage = STOP_IGNITER;
             memory.time_start_shutdown = time;
         } else {
             state = ABORT;
+            memory.time_start_abort = time;
+            abort_stage = ABORT_MO;
         }
     }
 }
@@ -231,6 +230,14 @@ void PRBComputer::shutdown_sq(int time)
 {
     switch (shutdown_stage)
     {
+    case STOP_IGNITER:
+        if (time - memory.time_start_shutdown >= STOP_IGNITER_DELAY)
+        {
+            close_valve(IGNITER);
+            shutdown_stage = CLOSE_MO_bC;
+        }
+        break;
+
     case CLOSE_MO_bC:
         if (time - memory.time_start_shutdown >= CLOSE_MO_bC_DELAY)
         {
@@ -268,10 +275,27 @@ void PRBComputer::shutdown_sq(int time)
     }
 }
 
-void PRBComputer::request_manual_abort()
+void PRBComputer::abort_sq(int time)
 {
-    //request abort from FC
+    // Handle abort sequence
+    switch (abort_stage)
+    {
+        case ABORT_MO:
+            if (time - memory.time_start_abort >= ABORT_MO_DELAY)
+            {
+                close_valve(MO_bC);
+                abort_stage = ABORT_ME;
+            }
+            break;
 
+        case ABORT_ME:
+            if (time - memory.time_start_abort >= ABORT_ME_DELAY)
+            {
+                close_valve(ME_b);
+            }
+            break;
+
+    }
 }
 
 void selectI2CChannel(int channel) {
@@ -291,9 +315,6 @@ void PRBComputer::update(int time)
 {
     // Update the state machine
     // Declare variables outside the switch to avoid bypassing initialization
-    std::vector<float> sensor_values;
-    std::vector<float> pt1000_values;
-    float kulite_value = 0.0;
 
     switch (state)
     {
@@ -312,16 +333,6 @@ void PRBComputer::update(int time)
         case WAKEUP:
             // tone(BUZZER, 480, 1000);
             // Handle WAKEUP state if needed, otherwise do nothing
-            break;
-        case TEST:
-            status_led(ORANGE);
-            test_valves();
-            sensor_values = test_read_sensors();
-            pt1000_values = test_read_pt1000();
-            kulite_value = test_read_kulite();
-            Serial.println("Test done");
-            state = IDLE; // Return to IDLE after test
-            status_led(OFF);
             break;
         
         case CLEAR_TO_IGNITE:
@@ -359,26 +370,26 @@ void PRBComputer::update(int time)
             }
 
         case ABORT:
+            abort_sq(time);
             status_led(RED);
-            // tone(BUZZER, 440, 2500);
-            request_manual_abort();
             break;
 
         default:
             break;
     }
 
-    memory.ein_temp = read_temperature(EIN_CH);
+    memory.ein_temp_sensata = read_temperature(EIN_CH);
     memory.ein_press = read_pressure(EIN_CH);
     memory.ccc_temp = read_temperature(CCC_CH);
     memory.ccc_press = read_pressure(CCC_CH);
     memory.oin_temp = read_temperature(T_OIN);
+    memory.ein_temp_pt1000 = read_temperature(T_EIN);
     memory.oin_press = read_pressure(P_OIN);
 
     #ifdef DEBUG
     if (time - memory.time_print >= LED_TIMEOUT) {
         Serial.print("EIN T°: ");
-        Serial.println(memory.ein_temp);
+        Serial.println(memory.ein_temp_sensata);
         Serial.print("EIN P: ");
         Serial.println(memory.ein_press);
         Serial.print("CCC T°: ");
@@ -387,6 +398,8 @@ void PRBComputer::update(int time)
         Serial.println(memory.ccc_press);
         Serial.print("OIN T°: ");
         Serial.println(memory.oin_temp);
+        Serial.print("EIN T° (PT1000): ");
+        Serial.println(memory.ein_temp_pt1000);
         Serial.print("OIN P: ");
         Serial.println(memory.oin_press);
         memory.time_print = time;
@@ -394,34 +407,7 @@ void PRBComputer::update(int time)
     #endif
 }
 
-// ================ testing ================
-std::vector<float> PRBComputer::test_read_sensors()
-{
-    // Test reading sensors
-    float ein_temp = read_temperature(EIN_CH);
-    float ccc_temp = read_temperature(CCC_CH);
-    float ein_press = read_pressure(EIN_CH);
-    float ccc_press = read_pressure(CCC_CH);
-
-    return { ein_temp, ccc_temp, ein_press, ccc_press };
-}
-
-std::vector<float> PRBComputer::test_read_pt1000()
-{
-    // Test reading PT1000 sensors
-    float ein_temp = read_temperature(T_EIN);
-    float oin_temp = read_temperature(T_OIN);
-
-    return { ein_temp, oin_temp };
-}
-
-float PRBComputer::test_read_kulite()
-{
-    // Test reading Kulite sensors
-    float oin_press = read_pressure(P_OIN);
-
-    return oin_press;
-}
+// ================ Stress test ================
 
 void PRBComputer::stress_test(int cycles, int valve)
 {
@@ -444,22 +430,6 @@ void PRBComputer::stress_test(int cycles, int valve)
     }
     Serial.print("Stress test completed. Iterations: ");
     Serial.println(count_cycles);
-}
-
-void PRBComputer::test_valves()
-{
-    // Test opening and closing valves
-    open_valve(ME_b);
-    Serial.println("ME_b valve opened");
-    delay(500);
-    open_valve(MO_bC);
-    Serial.println("MO_bC valve opened");
-    delay(1000);
-    close_valve(ME_b);
-    Serial.println("ME_b valve closed");
-    delay(500);
-    close_valve(MO_bC);
-    Serial.println("MO_bC valve closed");
 }
 
 
