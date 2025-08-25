@@ -124,6 +124,7 @@ void receiveEvent(int numBytes) {
 // I2C request handler
 void requestEvent() {
   tone(BUZZER, 440, 500); // Indicate request received
+  status_led(GREEN);
   
   if (Wire1.available()) {
     received_cmd = Wire1.read(); // Read the command
@@ -138,7 +139,6 @@ void requestEvent() {
   {
   case AV_NET_PRB_IS_WOKEN_UP:
     Serial.println("Received AV_NET_PRB_IS_WOKEN_UP command");
-    status_led(PURPLE);
     resp_val_int = AV_NET_CMD_ON;
     is_resp_int = true;
     break;
@@ -146,7 +146,6 @@ void requestEvent() {
   case AV_NET_PRB_FSM_PRB:
     resp_val_int = computer.get_state();
     is_resp_int = true;
-    status_led(BLUE);
     break;
 
   case AV_NET_PRB_P_OIN:
@@ -167,12 +166,11 @@ void requestEvent() {
       is_resp_int = false; // We are sending a float response
       break;
 
-    case AV_NET_PRB_T_EIN: {
+    case AV_NET_PRB_T_EIN:
       Serial.println("Received AV_NET_PRB_T_EIN command");
       resp_val_float = memory.ein_temp_sensata;
       is_resp_int = false; // We are sending a float response
       break;
-    }
 
     case AV_NET_PRB_P_CCC:
       Serial.println("Received AV_NET_PRB_P_CCC command");
@@ -186,8 +184,13 @@ void requestEvent() {
       is_resp_int = false; // We are sending a float response
       break;
 
+    case AV_NET_PRB_T_EIN_PT1000:
+      Serial.println("Received AV_NET_PRB_T_EIN_PT1000 command");
+      resp_val_float = memory.ein_temp_pt1000;
+      is_resp_int = false; // We are sending a float response
+      break;
+
     case AV_NET_PRB_VALVES_STATE: {
-      status_led(GREEN);
       Serial.println("Received AV_NET_PRB_VALVES_STATE read command");
       bool ME_state = memory.ME_state;
       bool MO_state = memory.MO_state;
@@ -214,6 +217,8 @@ void requestEvent() {
     Wire1.write((uint8_t*)&resp_val_float, AV_NET_XFER_SIZE);
   }
   Wire1.flush(); // Ensure all data is sent
+
+  status_led(OFF);
 }
 
 void setup() {

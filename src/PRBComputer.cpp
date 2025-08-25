@@ -5,7 +5,7 @@
 
 #define TEST_WITHOUT_PRESSURE
 
-PRBComputer::PRBComputer(prbFSM state)
+PRBComputer::PRBComputer(PRB_FSM state)
 {
     state = state;
     memory.time_start_ignition = 0;
@@ -159,13 +159,13 @@ bool PRBComputer::check_pressure(int sensor) {
 
 // ========= getter =========
 prb_memory_t PRBComputer::get_memory() { return memory; }
-prbFSM PRBComputer::get_state() { return state; }
+PRB_FSM PRBComputer::get_state() { return state; }
 ignitionStage PRBComputer::get_ignition_stage() { return ignition_stage; }
 shutdownStage PRBComputer::get_shutdown_stage() { return shutdown_stage; }
 
 
 // ========= setter =========
-void PRBComputer::set_state(prbFSM new_state) { state = new_state; }
+void PRBComputer::set_state(PRB_FSM new_state) { state = new_state; }
 
 
 // ========= ignition sequences =========
@@ -353,17 +353,6 @@ void PRBComputer::update(int time)
             shutdown_sq(time);
             status_led_shutdown();
             break;
-
-        case REQUEST_ABORT:
-            if (!memory.status_led && time - memory.time_led >= LED_TIMEOUT/4) {
-                status_led(RED);
-                memory.time_led = time;
-                memory.status_led = true;
-            } else if (memory.status_led && time - memory.time_led >= LED_TIMEOUT/4) {
-                status_led(OFF);
-                memory.time_led = time;
-                memory.status_led = false;
-            }
 
         case ABORT:
             abort_sq(time);
