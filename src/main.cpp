@@ -108,7 +108,7 @@ void receiveEvent(int numBytes) {
         break;
 
       case AV_NET_PRB_ABORT:
-        computer.set_state(ABORT);
+        computer.set_state(ABORT_PRB);
         status_led(RED);
         break;
 
@@ -125,7 +125,7 @@ void receiveEvent(int numBytes) {
 void requestEvent() {
   tone(BUZZER, 440, 500); // Indicate request received
   status_led(GREEN);
-  
+
   if (Wire1.available()) {
     received_cmd = Wire1.read(); // Read the command
   }
@@ -135,26 +135,25 @@ void requestEvent() {
 
   prb_memory_t memory = computer.get_memory();
 
-  switch (received_cmd)
-  {
-  case AV_NET_PRB_IS_WOKEN_UP:
-    Serial.println("Received AV_NET_PRB_IS_WOKEN_UP command");
-    resp_val_int = AV_NET_CMD_ON;
-    is_resp_int = true;
-    break;
+  switch (received_cmd) {
+    case AV_NET_PRB_IS_WOKEN_UP:
+      Serial.println("Received AV_NET_PRB_IS_WOKEN_UP command");
+      resp_val_int = AV_NET_CMD_ON;
+      is_resp_int = true;
+      break;
 
-  case AV_NET_PRB_FSM_PRB:
-    resp_val_int = computer.get_state();
-    is_resp_int = true;
-    break;
+    case AV_NET_PRB_FSM_PRB:
+      resp_val_int = computer.get_state();
+      is_resp_int = true;
+      break;
 
-  case AV_NET_PRB_P_OIN:
+    case AV_NET_PRB_P_OIN:
       Serial.println("Received AV_NET_PRB_P_OIN command");
       resp_val_float = memory.oin_press;
       is_resp_int = false; // We are sending a float response
       break;
 
-  case AV_NET_PRB_T_OIN:
+    case AV_NET_PRB_T_OIN:
       Serial.println("Received AV_NET_PRB_T_OIN command");
       resp_val_float = memory.oin_temp;
       is_resp_int = false; // We are sending a float response
@@ -202,11 +201,18 @@ void requestEvent() {
       is_resp_int = true;
       break;
     }
-  
-  default:
-    break;
+
+    case AV_NET_PRB_SPECIFIC_IMP: {
+      Serial.println("Received AV_NET_PRB_SPECIFIC_IMP read command");
+      resp_val_float = memory.engine_specific_impulse;
+      is_resp_int = false; // We are sending a float response
+      break;
+    }
+
+    default:
+      break;
   }
-  
+
   if (is_resp_int) {
     Serial.print("Sending int response value (HEX): ");
     Serial.println(resp_val_int, HEX);

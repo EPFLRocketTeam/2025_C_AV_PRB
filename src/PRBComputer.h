@@ -5,22 +5,25 @@
 
 typedef struct prb_memory_t
 {
-    int time_start_ignition;
-    int time_start_shutdown;
-    int time_start_abort;
-    bool status_led;
-    bool ME_state;
-    bool MO_state;
-    bool IGNITER_state;
-    int time_led;
-    int time_print;
-    float oin_temp;
-    float ein_temp_pt1000;
-    float oin_press;
-    float ein_temp_sensata;
-    float ein_press;
-    float ccc_temp;
-    float ccc_press;
+    int time_start_ignition;        // time @ which ignition starts [ms]
+    int time_start_shutdown;        // time @ which shutdown starts [ms]
+    int time_start_abort;           // time @ which abort starts [ms]
+    bool status_led;                // status LED state
+    bool ME_state;                  // ME valve state
+    bool MO_state;                  // MO valve state
+    bool IGNITER_state;             // IGNITER state
+    int time_led;                   // time @ which LED state changes [ms]
+    int time_print;                 // time @ which print occurs [ms]
+    float oin_temp;                 // OIN temperature (PT1000) [°C]
+    float ein_temp_pt1000;          // EIN temperature (PT1000) [°C]
+    float oin_press;                // OIN pressure (Kulite) [Pa]
+    float ein_temp_sensata;         // EIN temperature (Sensata) [°C]
+    float ein_press;                // EIN pressure (Sensata) [Pa]
+    float ccc_temp;                 // CCC temperature (Sensata) [°C]
+    float ccc_press;                // CCC pressure (Sensata) [Pa]
+    float integral;                 // integral [Pa.s]
+    float engine_specific_impulse;  // engine specific impulse [N.s]
+    int integral_past_time;         // past time for integral calculation [ms]
 }prb_memory_t;
 
 

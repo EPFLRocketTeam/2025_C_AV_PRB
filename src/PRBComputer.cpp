@@ -2,9 +2,6 @@
 #include "PRBComputer.h"
 #include "Wire.h"
 
-
-#define TEST_WITHOUT_PRESSURE
-
 PRBComputer::PRBComputer(PRB_FSM state)
 {
     state = state;
@@ -18,6 +15,8 @@ PRBComputer::PRBComputer(PRB_FSM state)
     memory.ME_state = false;
     memory.MO_state = false;
     memory.IGNITER_state = false;
+    memory.integral = 0.0;
+    memory.integral_past_time = 0;
 }
 
 PRBComputer::~PRBComputer()
@@ -79,18 +78,19 @@ float PRBComputer::read_pressure(int sensor)
     switch (sensor)
     {
     case P_OIN: {
+        #ifdef KULITE
         int rawValue = analogRead(P_OIN);
         float voltage = (rawValue / 4095.0) * 3.3; // Assuming a 12-bit ADC and 3.3V reference
         float v_sensor = voltage / 33;
         press = (v_sensor * 1000.0) * (max_kulite_value / 100.0);
-        // Serial.println("voltage: " + String(voltage));
-        //read analog pressure
+        #else 
+        selectI2CChannel(sensor);
+        I2C = true;
+        #endif
         break;
     }
 
-        //to work on : how to differenciat between the 3 sensors
     case EIN_CH:
-    case CIG_CH:
     case CCC_CH:
         selectI2CChannel(sensor);
         I2C = true;
@@ -132,7 +132,6 @@ float PRBComputer::read_temperature(int sensor)
         break;
 
     case EIN_CH:
-    case CIG_CH:
     case CCC_CH:
         selectI2CChannel(sensor);
         I2C = true;
@@ -171,73 +170,159 @@ void PRBComputer::set_state(PRB_FSM new_state) { state = new_state; }
 // ========= ignition sequences =========
 void PRBComputer::ignition_sq(int time)
 {
-    //ignition sequence 1 (ISQ1)
-    if (ignition_stage == GO)
+    switch (ignition_stage)
     {
+    case GO:
         ignition_stage = PRE_CHILL;
-    }
-
-    //Pre-chill : open MO-b
-    if (ignition_stage == PRE_CHILL && time - memory.time_start_ignition >= PRE_CHILL_DELAY) 
-    {
-        open_valve(MO_bC);
-        ignition_stage = POST_CHILL;
-    }
-
-    // after 10s
-    // stop pre-chill : close MO-b
-    if (ignition_stage == POST_CHILL && time - memory.time_start_ignition >= STOP_CHILL_DELAY)
-    {
-        close_valve(MO_bC);
-        ignition_stage = IGNITION;
-    }
-
-    //after 15s
-    //Ignition : MOSFET (IGNITER)
-    if (ignition_stage == IGNITION && time - memory.time_start_ignition >= IGNITION_DELAY)
-    {
-        open_valve(IGNITER);
-        ignition_stage = LIFTOFF;
-    }
-
-    //after 16s
-    //Liftoff : Open MO-b and ME-b
-    if (ignition_stage == LIFTOFF && time - memory.time_start_ignition >= BURN_DELAY)
-    {
-        open_valve(MO_bC);
-        open_valve(ME_b);
-        // close_valve(IGNITER);
-        ignition_stage = PRESSURE_CHECK;
-    }
-
-    //after 100ms
-    if (ignition_stage == PRESSURE_CHECK && time - memory.time_start_ignition >= PRESSURE_CHECK_DELAY)
-    {
-        if (check_pressure(CCC_CH)) {
-            state = SHUTDOWN_SQ;
-            ignition_stage = NOGO;
-            shutdown_stage = STOP_IGNITER;
-            memory.time_start_shutdown = time;
-        } else {
-            state = ABORT;
-            memory.time_start_abort = time;
-            abort_stage = ABORT_MO;
+        break;
+    
+    case PRE_CHILL:
+        if (time - memory.time_start_ignition >= PRE_CHILL_DELAY) {
+            open_valve(MO_bC);
+            ignition_stage = STOP_CHILL;
         }
+        break;
+    
+    case STOP_CHILL:
+        if (time - memory.time_start_ignition >= STOP_CHILL_DELAY) {
+            close_valve(MO_bC);
+            ignition_stage = IGNITION;
+        }
+        break;
+    
+    case IGNITION:
+        if (time - memory.time_start_ignition >= IGNITION_DELAY) {
+            open_valve(IGNITER);
+            ignition_stage = BURN_START;
+        }
+        break;
+
+    case BURN_START:
+        if (time - memory.time_start_ignition >= BURN_START_DELAY) {
+            open_valve(MO_bC);
+            open_valve(ME_b);
+            ignition_stage = PRESSURE_CHECK;
+        }
+        break;
+
+    case PRESSURE_CHECK:
+        if (time - memory.time_start_ignition >= PRESSURE_CHECK_DELAY) {
+            if (check_pressure(CCC_CH)) {
+                ignition_stage = PRESSURE_OK;
+            } else {
+                state = ABORT_PRB;
+                memory.time_start_abort = time;
+                abort_stage = ABORT_MO;
+            }
+        }
+        break;
+    
+    case PRESSURE_OK:
+        if (time - memory.time_start_ignition >= STOP_IGNITER_DELAY) {
+            close_valve(IGNITER);
+            ignition_stage = BURN;
+        }
+        break;
+    
+    case BURN:
+
+        #ifdef INTEGRATE_CHAMBER_PRESSURE
+
+        if (memory.integral_past_time == 0) {
+            memory.integral_past_time = time;
+            break;
+        }
+        
+        memory.integral += memory.ccc_press * (time - memory.integral_past_time); // in Pa.s
+        memory.integral_past_time = time;
+
+        memory.engine_specific_impulse = I_SP * G * (AREA_EXHAUST/C_STAR) * memory.integral;
+
+        if (time - memory.time_start_ignition <= (BURN_START_DELAY + MIN_BURN_TIME)) {
+            break;
+        }
+
+        if (memory.integral >= (I_TARGET * C_STAR) / (I_SP * G * AREA_EXHAUST) ||
+            time - memory.time_start_ignition >= (BURN_START_DELAY + MAX_BURN_TIME)) {
+            state = SHUTDOWN_SQ;
+            memory.time_start_shutdown = time;
+            shutdown_stage = CLOSE_MO_bC;
+            ignition_stage = NOGO;
+        }
+
+        #else
+
+        if (time - memory.time_start_ignition >= IGNITION_ENDED) {
+            state = SHUTDOWN_SQ;
+            memory.time_start_shutdown = time;
+            shutdown_stage = CLOSE_MO_bC;
+            ignition_stage = NOGO;
+        }
+        break;
+
+        #endif
+
+    default:
+        break;
     }
+    //ignition sequence 1 (ISQ1)
+    // if (ignition_stage == GO)
+    // {
+    //     ignition_stage = PRE_CHILL;
+    // }
+
+    // //Pre-chill : open MO-b
+    // if (ignition_stage == PRE_CHILL && time - memory.time_start_ignition >= PRE_CHILL_DELAY) 
+    // {
+    //     open_valve(MO_bC);
+    //     ignition_stage = STOP_CHILL;
+    // }
+
+    // // after 10s
+    // // stop pre-chill : close MO-b
+    // if (ignition_stage == STOP_CHILL && time - memory.time_start_ignition >= STOP_CHILL_DELAY)
+    // {
+    //     close_valve(MO_bC);
+    //     ignition_stage = IGNITION;
+    // }
+
+    // //after 15s
+    // //Ignition : MOSFET (IGNITER)
+    // if (ignition_stage == IGNITION && time - memory.time_start_ignition >= IGNITION_DELAY)
+    // {
+    //     open_valve(IGNITER);
+    //     ignition_stage = BURN_START;
+    // }
+
+    // //after 16s
+    // //Liftoff : Open MO-b and ME-b
+    // if (ignition_stage == BURN_START && time - memory.time_start_ignition >= BURN_START_DELAY)
+    // {
+    //     open_valve(MO_bC);
+    //     open_valve(ME_b);
+    //     // close_valve(IGNITER);
+    //     ignition_stage = PRESSURE_CHECK;
+    // }
+
+    // //after 500ms
+    // if (ignition_stage == PRESSURE_CHECK && time - memory.time_start_ignition >= PRESSURE_CHECK_DELAY)
+    // {
+    //     if (check_pressure(CCC_CH)) {
+    //         ignition_stage = PRESSURE_OK;
+    //     } else {
+    //         state = ABORT;
+    //         memory.time_start_abort = time;
+    //         abort_stage = ABORT_MO;
+    //     }
+    // }
+
+
 }
 
 void PRBComputer::shutdown_sq(int time)
 {
     switch (shutdown_stage)
     {
-    case STOP_IGNITER:
-        if (time - memory.time_start_shutdown >= STOP_IGNITER_DELAY)
-        {
-            close_valve(IGNITER);
-            shutdown_stage = CLOSE_MO_bC;
-        }
-        break;
-
     case CLOSE_MO_bC:
         if (time - memory.time_start_shutdown >= CLOSE_MO_bC_DELAY)
         {
@@ -354,7 +439,7 @@ void PRBComputer::update(int time)
             status_led_shutdown();
             break;
 
-        case ABORT:
+        case ABORT_PRB:
             abort_sq(time);
             status_led(RED);
             break;
@@ -426,7 +511,7 @@ void PRBComputer::status_led_ignition(){
         status_led(GREEN);
         break;
 
-    case POST_CHILL:
+    case STOP_CHILL:
         status_led(BLUE);
         break;
 
@@ -434,7 +519,7 @@ void PRBComputer::status_led_ignition(){
         status_led(RED);
         break;
 
-    case LIFTOFF:
+    case BURN_START:
         status_led(TEAL);
         break;
 
