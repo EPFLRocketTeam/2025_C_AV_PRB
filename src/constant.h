@@ -37,13 +37,13 @@
 
 // Ignition sequence constants
 // ================= Ignition sequence timing =================
-#define PRE_CHILL_DELAY         0              // start pre-chill
-#define STOP_CHILL_DELAY        4000           // 4s -> stop pre-chill
-#define IGNITION_DELAY          9000           // 5s -> ignite
-#define BURN_START_DELAY        10000          // 1s -> start burn
-#define PRESSURE_CHECK_DELAY    10100          // 100ms -> pressure check
-#define STOP_IGNITER_DELAY      13000          // 3s -> stop igniter
-#define IGNITION_ENDED          16000          // 6s -> stop burn
+#define PRE_CHILL_DELAY         0               // start pre-chill
+#define STOP_CHILL_DELAY        4000            // 4s -> stop pre-chill
+#define IGNITION_DELAY          5000            // 5s -> ignite
+#define BURN_START_DELAY        1000            // 1s -> start burn
+#define PRESSURE_CHECK_DELAY    100             // 100ms -> pressure check
+#define STOP_IGNITER_DELAY      3000            // 3s -> stop igniter
+#define IGNITION_ENDED          6000            // 6s -> stop burn
 
 // ================= Shutdown sequence timing =================
 
@@ -58,7 +58,11 @@
 #define ABORT_ME_DELAY          1000
 
 // Pressure check
+#ifdef TEST_WITHOUT_PRESSURE
+#define PRESSURE_CHECK_THRESHOLD -1
+#else
 #define PRESSURE_CHECK_THRESHOLD 25
+#endif
 
 // cst to calculate motor power
 #define G                       9.81    //[m/s^2]
@@ -66,6 +70,7 @@
 #define I_TARGET                2.0     //[N.s] target impulse
 #define AREA_EXHAUST            0.01    //[m^2]
 #define C_STAR                  1.0     //[]
+#define BUILD_UP_POWER          750     //[N.s]
 #define MIN_BURN_TIME           5000    //[ms]
 #define MAX_BURN_TIME           6000    //[ms]
 
@@ -85,7 +90,7 @@ enum ignitionStage
     NOGO
 };
 
-enum shutdownStage
+enum passivationStage
 {
     SLEEP,
     CLOSE_MO_bC,
@@ -101,17 +106,6 @@ enum abortStage
     ABORT_MO,
     ABORT_ME
 };
-
-// enum sensorName
-// {
-//     P_OIN_SENS,
-//     T_OIN_PT1000,
-//     T_EIN_PT1000,
-//     P_EIN_SENS,
-//     T_EIN_SENS,
-//     P_CCC_SENS,
-//     T_CCC_SENS,
-// };
 
 struct RGBColor {
     int red;

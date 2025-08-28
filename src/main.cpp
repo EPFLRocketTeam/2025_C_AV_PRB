@@ -108,7 +108,7 @@ void receiveEvent(int numBytes) {
         break;
 
       case AV_NET_PRB_ABORT:
-        computer.set_state(ABORT_PRB);
+        computer.set_state(ABORT_ON_FLIGHT);
         status_led(RED);
         break;
 

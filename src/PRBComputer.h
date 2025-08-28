@@ -5,8 +5,8 @@
 
 typedef struct prb_memory_t
 {
-    int time_start_ignition;        // time @ which ignition starts [ms]
-    int time_start_shutdown;        // time @ which shutdown starts [ms]
+    int time_ignition;              // time @ which ignition starts [ms]
+    int time_start_passivation;        // time @ which shutdown starts [ms]
     int time_start_abort;           // time @ which abort starts [ms]
     bool status_led;                // status LED state
     bool ME_state;                  // ME valve state
@@ -16,14 +16,16 @@ typedef struct prb_memory_t
     int time_print;                 // time @ which print occurs [ms]
     float oin_temp;                 // OIN temperature (PT1000) [°C]
     float ein_temp_pt1000;          // EIN temperature (PT1000) [°C]
-    float oin_press;                // OIN pressure (Kulite) [Pa]
+    float oin_press;                // OIN pressure (Kulite) [bar]
     float ein_temp_sensata;         // EIN temperature (Sensata) [°C]
-    float ein_press;                // EIN pressure (Sensata) [Pa]
+    float ein_press;                // EIN pressure (Sensata) [bar]
     float ccc_temp;                 // CCC temperature (Sensata) [°C]
-    float ccc_press;                // CCC pressure (Sensata) [Pa]
-    float integral;                 // integral [Pa.s]
+    float ccc_press;                // CCC pressure (Sensata) [bar]
+    float integral;                 // integral [bar.s]
     float engine_specific_impulse;  // engine specific impulse [N.s]
     int integral_past_time;         // past time for integral calculation [ms]
+    bool calculate_integral;
+    bool liftoff_detected;
 }prb_memory_t;
 
 
@@ -31,9 +33,9 @@ class PRBComputer
 {
 private:
     PRB_FSM state;
-    ignitionStage ignition_stage;
-    shutdownStage shutdown_stage;
-    abortStage abort_stage;
+    ignitionStage ignition_phase;
+    passivationStage passivation_phase;
+    abortStage abort_phase;
 
     PTE7300_I2C my_sensor;
 
@@ -42,12 +44,11 @@ private:
     //sensor reading
     float read_pressure(int sensor);
     float read_temperature(int sensor);
-    bool check_pressure(int sensor);
 
     //valves sequences
-    void ignition_sq(int time);
-    void shutdown_sq(int time);
-    void abort_sq(int time);
+    void ignition_sq();
+    void passivation_sq(int time);
+    void abort_on_gnd_sq(int time);
     
     // status LED configuration
     void status_led_ignition();
@@ -68,7 +69,7 @@ public:
     prb_memory_t get_memory();
     PRB_FSM get_state();
     ignitionStage get_ignition_stage();
-    shutdownStage get_shutdown_stage();
+    passivationStage get_shutdown_stage();
 
     //setters
     void set_state(PRB_FSM new_state);
