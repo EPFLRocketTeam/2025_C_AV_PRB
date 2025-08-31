@@ -25,6 +25,8 @@ void receiveEvent(int numBytes) {
       bytesRead++;
     }
 
+    status_led(WHITE);
+
     #ifdef DEBUG
     Serial.print("Received I2C command, nb bytes:");
     Serial.println(numBytes);
@@ -48,8 +50,6 @@ void receiveEvent(int numBytes) {
     Serial.println(); 
     #endif
     
-
-    
     // Set responseValue according to command, but do not write here
     switch (received_cmd) {
       case AV_NET_PRB_TIMESTAMP: {
@@ -59,16 +59,13 @@ void receiveEvent(int numBytes) {
 
       case AV_NET_PRB_WAKE_UP:
         Serial.println("Received AV_NET_PRB_WAKE_UP command");
-        status_led(TEAL);
+        // status_led(TEAL);
         break;
 
       case AV_NET_PRB_CLEAR_TO_IGNITE:
         Serial.println("Received AV_NET_PRB_CLEAR_TO_IGNITE command");
         if (received_buff[0] == AV_NET_CMD_ON) {
-          status_led(GREEN);
           computer.set_state(CLEAR_TO_IGNITE);
-        } else {
-          status_led(RED);
         }
         break;
 
@@ -83,19 +80,12 @@ void receiveEvent(int numBytes) {
           status_led(GREEN);
         } else if (valves_ME_State == AV_NET_CMD_OFF) {
           computer.close_valve(ME_b);
-          status_led(ORANGE);
-        } else {
-          status_led(RED);
         }
 
         if (valves_MO_State == AV_NET_CMD_ON) {
           computer.open_valve(MO_bC);
-          status_led(GREEN);
         } else if (valves_MO_State == AV_NET_CMD_OFF) {
           computer.close_valve(MO_bC);
-          status_led(ORANGE);
-        } else {
-          status_led(RED);
         }
         break;
       }
@@ -107,10 +97,24 @@ void receiveEvent(int numBytes) {
         }
         break;
 
-      case AV_NET_PRB_ABORT:
-        computer.set_state(ABORT_ON_FLIGHT);
-        status_led(RED);
+      case AV_NET_PRB_ABORT: {
+        bool abort_passivation = (received_buff[0] == AV_NET_CMD_ON);
+        if (abort_passivation) {
+          Serial.println("Received AV_NET_PRB_ABORT command - Passivation");
+          computer.set_state(PASSIVATION_SQ);
+        } else {
+          Serial.println("Received AV_NET_PRB_ABORT command - Abort");
+          computer.set_state(ABORT);
+          // status_led(RED);
+        }
         break;
+      }
+
+      case AV_NET_PRB_PASSIVATE: {
+        Serial.println("Received AV_NET_PRB_PASSIVATE command");
+        computer.set_state(PASSIVATION_SQ);
+        break;
+      }
 
       default:
         Serial.println("Unknown or read command received");
@@ -123,7 +127,7 @@ void receiveEvent(int numBytes) {
 
 // I2C request handler
 void requestEvent() {
-  tone(BUZZER, 440, 500); // Indicate request received
+  // tone(BUZZER, 440, 500); // Indicate request received
   status_led(GREEN);
 
   if (Wire1.available()) {
@@ -248,12 +252,9 @@ void setup() {
   digitalWrite(RESET, HIGH);
 
   // I2C with Raspberry Pi (use default Wire)
-  Wire1.begin(SLAVE_ADDR);       // Set as I2C slave
+  Wire1.begin(AV_NET_ADDR_PRB);  // Set as I2C slave
   Wire1.onReceive(receiveEvent); // Register receive handler
   Wire1.onRequest(requestEvent); // Register request handler
-
-  // Begin I2C communication with spine
-  // Wire1.begin(SLAVE_ADDR);
 
   // Begin I2C communication with sensors
   Wire2.begin();
@@ -273,7 +274,5 @@ void setup() {
 // int16_t DSP_T1;
 
 void loop() {
-
   computer.update(millis());
-
 }

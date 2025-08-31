@@ -6,7 +6,7 @@
 typedef struct prb_memory_t
 {
     int time_ignition;              // time @ which ignition starts [ms]
-    int time_start_passivation;        // time @ which shutdown starts [ms]
+    int time_passivation;        // time @ which shutdown starts [ms]
     int time_start_abort;           // time @ which abort starts [ms]
     bool status_led;                // status LED state
     bool ME_state;                  // ME valve state
@@ -47,12 +47,11 @@ private:
 
     //valves sequences
     void ignition_sq();
-    void passivation_sq(int time);
-    void abort_on_gnd_sq(int time);
+    void passivation_sq();
+    void abort_sq(int time);
     
     // status LED configuration
     void status_led_ignition();
-    void status_led_shutdown();
 
     // testing
     void stress_test(int cycles, int valve);

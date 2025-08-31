@@ -3,10 +3,10 @@
 #include "vector"
 
 // ================= ifdef defines =================
-#define DEBUG
+// #define DEBUG
 #define TEST_WITHOUT_PRESSURE
-#define INTEGRATE_CHAMBER_PRESSURE
-#define KULITE
+// #define INTEGRATE_CHAMBER_PRESSURE
+// #define KULITE
 
 // PINs attribition on Teensy
 #define ME_b        37
@@ -23,7 +23,6 @@
 #define BUZZER      PIN_A1
 
 // Adresses I2C
-#define SLAVE_ADDR  0x0F
 #define MUX_ADDR    0x70        // 0xE0
 #define SENS_ADDR   0x6C        //or 0x6C
 #define EIN_CH      0x01        // channel 1
@@ -38,20 +37,21 @@
 // Ignition sequence constants
 // ================= Ignition sequence timing =================
 #define PRE_CHILL_DELAY         0               // start pre-chill
-#define STOP_CHILL_DELAY        4000            // 4s -> stop pre-chill
-#define IGNITION_DELAY          5000            // 5s -> ignite
-#define BURN_START_DELAY        1000            // 1s -> start burn
-#define PRESSURE_CHECK_DELAY    100             // 100ms -> pressure check
-#define STOP_IGNITER_DELAY      3000            // 3s -> stop igniter
-#define IGNITION_ENDED          6000            // 6s -> stop burn
+#define STOP_CHILL_DELAY        250             // 250ms -> stop pre-chill
+#define IGNITION_DELAY          0               // 4s -> ignite
+#define BURN_START_ME_DELAY     4000            // 1.5s -> start burn
+#define BURN_START_MO_DELAY     1200            // 1.2s -> start burn
+#define PRESSURE_CHECK_DELAY    200             // 200ms -> pressure check
+#define IGNITION_ENDED          4250            // 4.25s -> stop burn
+#define CLOSE_ME_b_DELAY        250             // Close ME_b valve
+#define MAX_PASSIVATION_DELAY   30000           // 30s -> max passivation
 
 // ================= Shutdown sequence timing =================
 
 #define CLOSE_MO_bC_DELAY       0               // Close MO_bC valve
-#define CLOSE_ME_b_DELAY        5000            // Close ME_b valve
-#define OPEN_MO_bC_DELAY        7000            // Open MO_bC valve
-#define OPEN_ME_b_DELAY         35000           // Open ME_b valve
-#define OPEN_VE_VO_DELAY        150000          // Open VE_VO valve
+#define OPEN_MO_bC_DELAY        2000            // Open MO_bC valve
+#define OPEN_ME_b_DELAY         28000           // Open ME_b valve
+#define OPEN_VE_VO_DELAY        100000          // Open VE_VO valve
 
 // ================= Abort sequence timing =================
 #define ABORT_MO_DELAY          0
@@ -61,7 +61,7 @@
 #ifdef TEST_WITHOUT_PRESSURE
 #define PRESSURE_CHECK_THRESHOLD -1
 #else
-#define PRESSURE_CHECK_THRESHOLD 25
+#define PRESSURE_CHECK_THRESHOLD 27.5          //for 5.38 kN of thrust
 #endif
 
 // cst to calculate motor power
@@ -71,7 +71,7 @@
 #define AREA_EXHAUST            0.01    //[m^2]
 #define C_STAR                  1.0     //[]
 #define BUILD_UP_POWER          750     //[N.s]
-#define MIN_BURN_TIME           5000    //[ms]
+#define MIN_BURN_TIME           3000    //[ms]
 #define MAX_BURN_TIME           6000    //[ms]
 
 // Status 
@@ -83,10 +83,12 @@ enum ignitionStage
     PRE_CHILL,
     STOP_CHILL,
     IGNITION,
-    BURN_START,
+    BURN_START_ME,
+    BURN_START_MO,
     PRESSURE_CHECK,
-    PRESSURE_OK,
     BURN,
+    BURN_STOP_ME,
+    WAIT_FOR_PASSIVATION,
     NOGO
 };
 

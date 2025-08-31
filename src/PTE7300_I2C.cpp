@@ -164,7 +164,8 @@ unsigned int PTE7300_I2C::readRegisterCRC(uint8_t address, unsigned int number, 
   
   if(crc8!=crc8_received)
   {
-	Serial.println("CRC ERROR!");
+	// Serial.println("CRC ERROR!");
+  
 	for(int i=0;i<number;i++)
 		{
 			buffer[i]=0;
