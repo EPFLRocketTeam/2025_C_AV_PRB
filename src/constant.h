@@ -5,8 +5,9 @@
 // ================= ifdef defines =================
 // #define DEBUG
 #define TEST_WITHOUT_PRESSURE
-// #define INTEGRATE_CHAMBER_PRESSURE
+#define INTEGRATE_CHAMBER_PRESSURE
 // #define KULITE
+#define VSTF_AND_COLD_FLOW
 
 // PINs attribition on Teensy
 #define ME_b        37
@@ -36,26 +37,23 @@
 
 // Ignition sequence constants
 // ================= Ignition sequence timing =================
-#define PRE_CHILL_DELAY         0               // start pre-chill
-#define STOP_CHILL_DELAY        250             // 250ms -> stop pre-chill
-#define IGNITION_DELAY          0               // 4s -> ignite
-#define BURN_START_ME_DELAY     4000            // 1.5s -> start burn
-#define BURN_START_MO_DELAY     1200            // 1.2s -> start burn
-#define PRESSURE_CHECK_DELAY    200             // 200ms -> pressure check
-#define IGNITION_ENDED          4250            // 4.25s -> stop burn
-#define CLOSE_ME_b_DELAY        250             // Close ME_b valve
-#define MAX_PASSIVATION_DELAY   30000           // 30s -> max passivation
+#define PRECHILL_DURATION       200             // 200ms -> prechill duration
+#define IGNITER_DURATION        4000            // 4s -> ignite
+#define IGNITION_DELAY          250             // 250ms -> start burn
+#define RAMPUP_DURATION         200             // 200ms -> pressure check
+#define BURN_DURATION           4250            // 4.25s -> stop burn
+#define CUTOFF_DELAY            250             // Close ME_b valve
+#define PASSIVATION_DELAY       120000          // 120s -> max passivation
 
 // ================= Shutdown sequence timing =================
 
-#define CLOSE_MO_bC_DELAY       0               // Close MO_bC valve
-#define OPEN_MO_bC_DELAY        2000            // Open MO_bC valve
-#define OPEN_ME_b_DELAY         28000           // Open ME_b valve
-#define OPEN_VE_VO_DELAY        100000          // Open VE_VO valve
+// #define CLOSE_MO_bC_DELAY    0               // Close MO_bC valve
+#define PASSIVATION_FUEL_DURATION   10000           // Open ME_b valve
+#define PASSIVATION_OX_DURATION     10000           // Open MO_bC valve
+// #define OPEN_VE_VO_DELAY     100000          // Open VE_VO valve
 
 // ================= Abort sequence timing =================
-#define ABORT_MO_DELAY          0
-#define ABORT_ME_DELAY          1000
+#define ABORT_PASSIVATION_DELAY 5000           // 5s -> max passivation
 
 // Pressure check
 #ifdef TEST_WITHOUT_PRESSURE
@@ -65,28 +63,30 @@
 #endif
 
 // cst to calculate motor power
-#define G                       9.81    //[m/s^2]
-#define I_SP                    1.0     //[N.s] specific impulse
-#define I_TARGET                2.0     //[N.s] target impulse
-#define AREA_EXHAUST            0.01    //[m^2]
-#define C_STAR                  1.0     //[]
-#define BUILD_UP_POWER          750     //[N.s]
-#define MIN_BURN_TIME           3000    //[ms]
-#define MAX_BURN_TIME           6000    //[ms]
+#define G                       9.80665         //[m/s^2]
+#define I_SP                    252.22          //[N.s] specific impulse
+#define AREA_THROAT             0.0013644113    //[m^2]
+#define C_STAR                  2400.5          //[]
+#define BUILD_UP_POWER          750              //[N.s]
+#define MIN_BURN_TIME           4000             //[ms] -> 4s min time burn
+#define MAX_BURN_TIME           4500             //[ms] -> 4.5s max time burn
+
+#define FLIGHT_IMPULSE          32939           //[N.s] flight impulse
+#define CUTOFF_IMPULSE          374.292         //[N.s] cutoff impulse
+#define I_TARGET                (FLIGHT_IMPULSE - CUTOFF_IMPULSE)           //[N.s] target impulse
 
 // Status 
 #define LED_TIMEOUT 1000 // 1 second
 
 enum ignitionStage
 {
-    GO,
     PRE_CHILL,
-    STOP_CHILL,
     IGNITION,
     BURN_START_ME,
     BURN_START_MO,
     PRESSURE_CHECK,
     BURN,
+    BURN_STOP_MO,
     BURN_STOP_ME,
     WAIT_FOR_PASSIVATION,
     NOGO
@@ -95,18 +95,16 @@ enum ignitionStage
 enum passivationStage
 {
     SLEEP,
-    CLOSE_MO_bC,
-    CLOSE_ME_b,
-    OPEN_MO_bC,
-    OPEN_ME_b,
+    PASSIVATION_ETH,
+    PASSIVATION_LOX,
     SHUTOFF
 };
 
-
 enum abortStage
 {
-    ABORT_MO,
-    ABORT_ME
+    ABORT_OXYDANT,
+    ABORT_ETHANOL,
+    WAIT_FOR_PASSIVATION_ABORT,
 };
 
 struct RGBColor {

@@ -17,9 +17,13 @@ PRBComputer::PRBComputer(PRB_FSM state)
     memory.IGNITER_state = false;
     memory.integral = 0.0;
     memory.integral_past_time = 0;
-    memory.engine_specific_impulse = 0.0;
+    memory.engine_total_impulse = 0.0;
     memory.calculate_integral = false;
-    memory.liftoff_detected = false;
+    memory.passivation = false;
+    for (int i = 0; i < 5; i++) {
+        memory.ccc_press_buffer[i] = 0.0;
+    }
+    memory.ccc_press_index = 0;
 }
 
 PRBComputer::~PRBComputer()
@@ -76,12 +80,11 @@ float PRBComputer::read_pressure(int sensor)
     int DSP_S = 0;
     float press = 0.0;
 
-    int max_kulite_value = 100;
-
     switch (sensor)
     {
     case P_OIN: {
         #ifdef KULITE
+        int max_kulite_value = 100;
         int rawValue = analogRead(P_OIN);
         float voltage = (rawValue / 4095.0) * 3.3; // Assuming a 12-bit ADC and 3.3V reference
         float v_sensor = voltage / 33;
@@ -162,6 +165,7 @@ passivationStage PRBComputer::get_shutdown_stage() { return passivation_phase; }
 
 // ========= setter =========
 void PRBComputer::set_state(PRB_FSM new_state) { state = new_state; }
+void PRBComputer::set_passivation(bool passiv) { memory.passivation = passiv; }
 
 
 // ========= ignition sequences =========
@@ -169,29 +173,15 @@ void PRBComputer::ignition_sq()
 {
     switch (ignition_phase)
     {
-    case GO:
-        ignition_phase = PRE_CHILL;
+    case PRE_CHILL:
+        open_valve(MO_bC);
+        ignition_phase = IGNITION;
         memory.time_ignition = millis();
         break;
     
-    case PRE_CHILL:
-        if (millis() - memory.time_ignition >= PRE_CHILL_DELAY) {
-            open_valve(MO_bC);
-            ignition_phase = STOP_CHILL;
-            memory.time_ignition = millis();
-        }
-        break;
-    
-    case STOP_CHILL:
-        if (millis() - memory.time_ignition >= STOP_CHILL_DELAY) {
-            close_valve(MO_bC);
-            ignition_phase = IGNITION;
-            memory.time_ignition = millis();
-        }
-        break;
-    
     case IGNITION:
-        if (millis() - memory.time_ignition >= IGNITION_DELAY) {
+        if (millis() - memory.time_ignition >= PRECHILL_DURATION) {
+            close_valve(MO_bC);
             open_valve(IGNITER);
             ignition_phase = BURN_START_ME;
             memory.time_ignition = millis();
@@ -199,7 +189,7 @@ void PRBComputer::ignition_sq()
         break;
 
     case BURN_START_ME:
-        if (millis() - memory.time_ignition >= BURN_START_ME_DELAY) {
+        if (millis() - memory.time_ignition >= IGNITER_DURATION) {
             open_valve(ME_b);
             close_valve(IGNITER);
             ignition_phase = BURN_START_MO;
@@ -208,27 +198,37 @@ void PRBComputer::ignition_sq()
         break;
 
     case BURN_START_MO:
-        if (millis() - memory.time_ignition >= BURN_START_MO_DELAY) {
+        if (millis() - memory.time_ignition >= IGNITION_DELAY) {
             open_valve(MO_bC);
             ignition_phase = PRESSURE_CHECK;
             memory.time_ignition = millis();
         }
         break;
 
-    case PRESSURE_CHECK:
-        if (millis() - memory.time_ignition >= PRESSURE_CHECK_DELAY) {
-            if (memory.ccc_press >= PRESSURE_CHECK_THRESHOLD) {
+    case PRESSURE_CHECK: {
+        // mobile mean on the pressure over 5 values
+        memory.ccc_press_buffer[memory.ccc_press_index] = memory.ccc_press; // in Pa
+        memory.ccc_press_index = (memory.ccc_press_index + 1) % 5;
+        float sum_ccc_press = 0.0;
+        for (int i = 0; i < 5; i++) {
+            sum_ccc_press += memory.ccc_press_buffer[i];
+        }
+        float mean_ccc_press = sum_ccc_press / 5.0;
+
+        if (millis() - memory.time_ignition >= RAMPUP_DURATION) {
+            if (mean_ccc_press >= PRESSURE_CHECK_THRESHOLD) { // CHECK 5 value before
                 ignition_phase = BURN;
                 memory.time_ignition = millis();
             } else {
                 state = ABORT;
-                abort_phase = ABORT_MO;
-                memory.time_start_abort = millis();
+                abort_phase = ABORT_OXYDANT;
+                memory.time_abort = millis();
             }
         }
         break;
+        }
     
-    case BURN:
+    case BURN: {
         #ifdef INTEGRATE_CHAMBER_PRESSURE
 
         if (memory.integral_past_time == 0) {
@@ -236,47 +236,52 @@ void PRBComputer::ignition_sq()
             break;
         }
 
-        memory.integral += memory.ccc_press * (millis() - memory.integral_past_time); // in Pa.s
+        float chamber_pressure_bar = memory.ccc_press / 100000.0; // Convert Pa to bar
+        memory.integral += chamber_pressure_bar * (millis() - memory.integral_past_time); // in Pa.s
         memory.integral_past_time = millis();
 
-        memory.engine_specific_impulse = I_SP * G * (AREA_EXHAUST/C_STAR) * memory.integral;
+        memory.engine_total_impulse = I_SP * G * (AREA_THROAT/C_STAR) * memory.integral;
 
         if (millis() - memory.time_ignition <= (MIN_BURN_TIME)) {
             break;
         }
 
-        if (memory.integral >= (I_TARGET * C_STAR) / (I_SP * G * AREA_EXHAUST) ||
+        if (memory.integral >= (I_TARGET * C_STAR) / (I_SP * G * AREA_THROAT) ||
             millis() - memory.time_ignition >= (MAX_BURN_TIME)) {
-            close_valve(MO_bC);
-            ignition_phase = BURN_STOP_ME;
-            memory.time_passivation = millis();
+            ignition_phase = BURN_STOP_MO;
+            memory.time_ignition = millis();
         }
 
         #else
 
-        if (millis() - memory.time_ignition >= IGNITION_ENDED) {
-            close_valve(MO_bC);
-            ignition_phase = BURN_STOP_ME;
-            memory.time_passivation = millis();
+        if (millis() - memory.time_ignition >= BURN_DURATION) {
+            ignition_phase = BURN_STOP_MO;
+            memory.time_ignition = millis();
         }
         break;
 
         #endif
+        }
+
+        case BURN_STOP_MO:
+            close_valve(MO_bC);
+            ignition_phase = BURN_STOP_ME;
+            memory.time_ignition = millis();
 
         case BURN_STOP_ME:
-            if (millis() - memory.time_passivation >= CLOSE_ME_b_DELAY) {
-                close_valve(MO_bC);
+            if (millis() - memory.time_ignition >= CUTOFF_DELAY) {
+                close_valve(ME_b);
                 ignition_phase = WAIT_FOR_PASSIVATION;
-                memory.time_passivation = millis();
+                memory.time_ignition = millis();
             }
             break;
 
         case WAIT_FOR_PASSIVATION:
         {
-            if (millis() - memory.time_ignition >= MAX_PASSIVATION_DELAY) {
+            if (millis() - memory.time_ignition >= PASSIVATION_DELAY) {
                 state = PASSIVATION_SQ;
                 memory.time_passivation = millis();
-                passivation_phase = CLOSE_MO_bC;
+                passivation_phase = PASSIVATION_ETH;
                 ignition_phase = NOGO;
             }
             break;
@@ -291,39 +296,30 @@ void PRBComputer::passivation_sq()
 {
     switch (passivation_phase)
     {
-    case CLOSE_MO_bC:
-        if (millis() - memory.time_passivation >= CLOSE_MO_bC_DELAY)
-        {
-            close_valve(MO_bC);
-            passivation_phase = CLOSE_ME_b;
-            memory.time_passivation = millis();
-        }
+    case PASSIVATION_ETH:
+        #ifndef VSTF_AND_COLD_FLOW
+            open_valve(ME_b);
+        #endif
+        passivation_phase = PASSIVATION_LOX;
+        memory.time_passivation = millis();
         break;
 
-    case CLOSE_ME_b:
-        if (millis() - memory.time_passivation >= CLOSE_ME_b_DELAY)
+    case PASSIVATION_LOX:
+        if (millis() - memory.time_passivation >= PASSIVATION_FUEL_DURATION)
         {
             close_valve(ME_b);
-            passivation_phase = OPEN_MO_bC;
-            memory.time_passivation = millis();
-        }
-        break;
-
-    case OPEN_MO_bC:
-        if (millis() - memory.time_passivation >= OPEN_MO_bC_DELAY)
-        {
             open_valve(MO_bC);
-            passivation_phase = OPEN_ME_b;
-            memory.time_passivation = millis();
-        }
-        break;
-
-    case OPEN_ME_b:
-        if (millis() - memory.time_passivation >= OPEN_ME_b_DELAY)
-        {
-            open_valve(ME_b);
             passivation_phase = SHUTOFF;
             memory.time_passivation = millis();
+        }
+        break;
+
+    case SHUTOFF:
+        if (millis() - memory.time_passivation >= PASSIVATION_OX_DURATION)
+        {
+            close_valve(MO_bC);
+            memory.time_abort = millis();
+            passivation_phase = SLEEP;
         }
         break;
 
@@ -332,27 +328,40 @@ void PRBComputer::passivation_sq()
     }
 }
 
-void PRBComputer::abort_sq(int time)
+void PRBComputer::abort_sq()
 {
     // Handle abort sequence
-    close_valve(IGNITER);
     switch (abort_phase)
     {
-        case ABORT_MO:
-            if (time - memory.time_start_abort >= ABORT_MO_DELAY)
-            {
-                close_valve(MO_bC);
-                abort_phase = ABORT_ME;
-            }
+        case ABORT_OXYDANT:
+            close_valve(MO_bC);
+            close_valve(IGNITER);
+            memory.time_abort = millis();
+            abort_phase = ABORT_ETHANOL;
             break;
 
-        case ABORT_ME:
-            if (time - memory.time_start_abort >= ABORT_ME_DELAY)
+        case ABORT_ETHANOL:
+            if (millis() - memory.time_abort >= CUTOFF_DELAY)
             {
                 close_valve(ME_b);
             }
             break;
 
+        case WAIT_FOR_PASSIVATION_ABORT:
+            if (millis() - memory.time_abort >= ABORT_PASSIVATION_DELAY)
+            {
+                if (memory.passivation) {
+                    state = PASSIVATION_SQ;
+                    passivation_phase = PASSIVATION_ETH;
+                    memory.time_passivation = millis();
+                } else {
+                    state = IDLE;
+                }
+            }
+            break;
+
+        default:
+            break;
     }
 }
 
@@ -366,7 +375,7 @@ void PRBComputer::ignite(int time)
 {
     // Start the ignition sequence
     state = IGNITION_SQ;
-    ignition_phase = GO;
+    ignition_phase = PRE_CHILL;
     memory.time_ignition = time;
 }
 
@@ -400,21 +409,20 @@ void PRBComputer::update(int time)
                 memory.time_led = time;
                 memory.status_led = false;
             }
-            ignition_phase = GO;
             break;
 
         case IGNITION_SQ:
             ignition_sq();
-            status_led_ignition();
+            status_led(BLUE);
             break;
 
         case PASSIVATION_SQ:
-            status_led(PURPLE);
             passivation_sq();
+            status_led(PURPLE);
             break;
 
         case ABORT:
-            abort_sq(time);
+            abort_sq();
             status_led(RED);
             break;
 
@@ -437,13 +445,21 @@ void PRBComputer::update(int time)
         } else {
             memory.integral += memory.ccc_press * (time - memory.integral_past_time); // in bar.s
             memory.integral_past_time = time;
-            memory.engine_specific_impulse = I_SP * G * (AREA_EXHAUST/C_STAR) * memory.integral;
+            memory.engine_total_impulse = I_SP * G * (AREA_THROAT/C_STAR) * memory.integral;
         }
     }
     #endif
 
-    #ifdef DEBUG
+    // if (time - memory.time_print >= LED_TIMEOUT) {
+    //     Serial.print("State : ");
+    //     Serial.println(state);
+    //     memory.time_print = time;
+    // }
+
+    // #ifdef DEBUG
     if (time - memory.time_print >= LED_TIMEOUT) {
+        Serial.print("State : ");
+        Serial.println(state);
         Serial.print("EIN T°: ");
         Serial.println(memory.ein_temp_sensata);
         Serial.print("EIN P: ");
@@ -460,7 +476,7 @@ void PRBComputer::update(int time)
         Serial.println(memory.oin_press);
         memory.time_print = time;
     }
-    #endif
+    // #endif
 }
 
 // ================ Stress test ================
@@ -490,33 +506,6 @@ void PRBComputer::stress_test(int cycles, int valve)
 
 
 // =============== status LED configuration ===============
-void PRBComputer::status_led_ignition(){
-    switch (ignition_phase)
-    {
-    case PRE_CHILL:
-        status_led(GREEN);
-        break;
-
-    case STOP_CHILL:
-        status_led(BLUE);
-        break;
-
-    case IGNITION:
-        status_led(ORANGE);
-        break;
-
-    case BURN_START_ME:
-        status_led(PURPLE);
-        break;
-
-    case PRESSURE_CHECK:
-        status_led(TEAL);
-        break;
-
-    default:
-        break;
-    }
-}
 
 void status_led(RGBColor color) {
     digitalWrite(RGB_RED, color.red);

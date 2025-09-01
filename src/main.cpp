@@ -25,7 +25,7 @@ void receiveEvent(int numBytes) {
       bytesRead++;
     }
 
-    status_led(WHITE);
+    // status_led(WHITE);
 
     #ifdef DEBUG
     Serial.print("Received I2C command, nb bytes:");
@@ -44,10 +44,10 @@ void receiveEvent(int numBytes) {
     #ifdef DEBUG
     Serial.print("Received I2C bytes: 0x");
     for (int i = 0; i < 4; ++i) {
-      Serial.print(received_buff[i], HEX);
+      // Serial.print(received_buff[i], HEX);
       if (i < 3) Serial.print(", ");
     }
-    Serial.println(); 
+    // Serial.println(); 
     #endif
     
     // Set responseValue according to command, but do not write here
@@ -58,15 +58,19 @@ void receiveEvent(int numBytes) {
       }
 
       case AV_NET_PRB_WAKE_UP:
-        Serial.println("Received AV_NET_PRB_WAKE_UP command");
+        // Serial.println("Received AV_NET_PRB_WAKE_UP command");
         // status_led(TEAL);
         break;
 
       case AV_NET_PRB_CLEAR_TO_IGNITE:
-        Serial.println("Received AV_NET_PRB_CLEAR_TO_IGNITE command");
+        // Serial.println("Received AV_NET_PRB_CLEAR_TO_IGNITE command");
         if (received_buff[0] == AV_NET_CMD_ON) {
           computer.set_state(CLEAR_TO_IGNITE);
         }
+        break;
+
+      case AV_NET_PRB_RESET:
+        computer.set_state(IDLE);
         break;
 
       case AV_NET_PRB_VALVES_STATE: {
@@ -76,22 +80,32 @@ void receiveEvent(int numBytes) {
         uint8_t valves_MO_State = received_buff[1];
 
         if (valves_ME_State == AV_NET_CMD_ON) {
+          Serial.println("Opening ME_b valve");
           computer.open_valve(ME_b);
           status_led(GREEN);
         } else if (valves_ME_State == AV_NET_CMD_OFF) {
+          Serial.println("Closing ME_b valve");
           computer.close_valve(ME_b);
+        } else {
+          Serial.print("Unknown state for ME_b valve: ");
+          Serial.println(valves_ME_State, HEX);
         }
 
         if (valves_MO_State == AV_NET_CMD_ON) {
+          Serial.println("Opening MO_bC valve");
           computer.open_valve(MO_bC);
         } else if (valves_MO_State == AV_NET_CMD_OFF) {
+          Serial.println("Closing MO_bC valve");
           computer.close_valve(MO_bC);
+        } else {
+          Serial.print("Unknown state for MO_bC valve: ");
+          Serial.println(valves_MO_State, HEX);
         }
         break;
       }
 
       case AV_NET_PRB_IGNITER: 
-        Serial.println("Received AV_NET_PRB_IGNITER command");
+        // Serial.println("Received AV_NET_PRB_IGNITER command");
         if (computer.get_state() == CLEAR_TO_IGNITE && received_buff[0] == AV_NET_CMD_ON) {
           computer.ignite(millis());
         }
@@ -100,27 +114,29 @@ void receiveEvent(int numBytes) {
       case AV_NET_PRB_ABORT: {
         bool abort_passivation = (received_buff[0] == AV_NET_CMD_ON);
         if (abort_passivation) {
-          Serial.println("Received AV_NET_PRB_ABORT command - Passivation");
-          computer.set_state(PASSIVATION_SQ);
-        } else {
-          Serial.println("Received AV_NET_PRB_ABORT command - Abort");
+          // Serial.println("Received AV_NET_PRB_ABORT command - Passivation");
           computer.set_state(ABORT);
+          computer.set_passivation(true);
+        } else {
+          // Serial.println("Received AV_NET_PRB_ABORT command - Abort");
+          computer.set_state(ABORT);
+          computer.set_passivation(false);
           // status_led(RED);
         }
         break;
       }
 
       case AV_NET_PRB_PASSIVATE: {
-        Serial.println("Received AV_NET_PRB_PASSIVATE command");
+        // Serial.println("Received AV_NET_PRB_PASSIVATE command");
         computer.set_state(PASSIVATION_SQ);
         break;
       }
 
       default:
-        Serial.println("Unknown or read command received");
+        // Serial.println("Unknown or read command received");
         break;
     }
-    Serial.println("End of command processing");
+    // Serial.println("End of command processing");
     Wire1.flush(); // Ensure all data is sent
   }
 }
@@ -128,20 +144,20 @@ void receiveEvent(int numBytes) {
 // I2C request handler
 void requestEvent() {
   // tone(BUZZER, 440, 500); // Indicate request received
-  status_led(GREEN);
+  // status_led(GREEN);
 
   if (Wire1.available()) {
     received_cmd = Wire1.read(); // Read the command
   }
 
-  Serial.print("(requestEvent) Received command: ");
-  Serial.println(received_cmd);
+  // Serial.print("(requestEvent) Received command: ");
+  // Serial.println(received_cmd);
 
   prb_memory_t memory = computer.get_memory();
 
   switch (received_cmd) {
     case AV_NET_PRB_IS_WOKEN_UP:
-      Serial.println("Received AV_NET_PRB_IS_WOKEN_UP command");
+      // Serial.println("Received AV_NET_PRB_IS_WOKEN_UP command");
       resp_val_int = AV_NET_CMD_ON;
       is_resp_int = true;
       break;
@@ -152,49 +168,49 @@ void requestEvent() {
       break;
 
     case AV_NET_PRB_P_OIN:
-      Serial.println("Received AV_NET_PRB_P_OIN command");
+      // Serial.println("Received AV_NET_PRB_P_OIN command");
       resp_val_float = memory.oin_press;
       is_resp_int = false; // We are sending a float response
       break;
 
     case AV_NET_PRB_T_OIN:
-      Serial.println("Received AV_NET_PRB_T_OIN command");
+      // Serial.println("Received AV_NET_PRB_T_OIN command");
       resp_val_float = memory.oin_temp;
       is_resp_int = false; // We are sending a float response
       break;
 
     case AV_NET_PRB_P_EIN:
-      Serial.println("Received AV_NET_PRB_P_EIN command");
+      // Serial.println("Received AV_NET_PRB_P_EIN command");
       resp_val_float = memory.ein_press;
       is_resp_int = false; // We are sending a float response
       break;
 
     case AV_NET_PRB_T_EIN:
-      Serial.println("Received AV_NET_PRB_T_EIN command");
+      // Serial.println("Received AV_NET_PRB_T_EIN command");
       resp_val_float = memory.ein_temp_sensata;
       is_resp_int = false; // We are sending a float response
       break;
 
     case AV_NET_PRB_P_CCC:
-      Serial.println("Received AV_NET_PRB_P_CCC command");
+      // Serial.println("Received AV_NET_PRB_P_CCC command");
       resp_val_float = memory.ccc_press;
       is_resp_int = false; // We are sending a float response
       break;
 
     case AV_NET_PRB_T_CCC:
-      Serial.println("Received AV_NET_PRB_T_CCC command");
+      // Serial.println("Received AV_NET_PRB_T_CCC command");
       resp_val_float = memory.ccc_temp;
       is_resp_int = false; // We are sending a float response
       break;
 
     case AV_NET_PRB_T_EIN_PT1000:
-      Serial.println("Received AV_NET_PRB_T_EIN_PT1000 command");
+      // Serial.println("Received AV_NET_PRB_T_EIN_PT1000 command");
       resp_val_float = memory.ein_temp_pt1000;
       is_resp_int = false; // We are sending a float response
       break;
 
     case AV_NET_PRB_VALVES_STATE: {
-      Serial.println("Received AV_NET_PRB_VALVES_STATE read command");
+      // Serial.println("Received AV_NET_PRB_VALVES_STATE read command");
       bool ME_state = memory.ME_state;
       bool MO_state = memory.MO_state;
 
@@ -207,8 +223,8 @@ void requestEvent() {
     }
 
     case AV_NET_PRB_SPECIFIC_IMP: {
-      Serial.println("Received AV_NET_PRB_SPECIFIC_IMP read command");
-      resp_val_float = memory.engine_specific_impulse;
+      // Serial.println("Received AV_NET_PRB_SPECIFIC_IMP read command");
+      resp_val_float = memory.engine_total_impulse;
       is_resp_int = false; // We are sending a float response
       break;
     }
@@ -218,12 +234,12 @@ void requestEvent() {
   }
 
   if (is_resp_int) {
-    Serial.print("Sending int response value (HEX): ");
-    Serial.println(resp_val_int, HEX);
+    // Serial.print("Sending int response value (HEX): ");
+    // Serial.println(resp_val_int, HEX);
     Wire1.write((uint8_t*)&resp_val_int, AV_NET_XFER_SIZE);
   } else {
-    Serial.print("Sending float response value (HEX): ");
-    Serial.println(resp_val_float, HEX);
+    // Serial.print("Sending float response value (HEX): ");
+    // Serial.println(resp_val_float, HEX);
     Wire1.write((uint8_t*)&resp_val_float, AV_NET_XFER_SIZE);
   }
   Wire1.flush(); // Ensure all data is sent

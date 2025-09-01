@@ -7,7 +7,7 @@ typedef struct prb_memory_t
 {
     int time_ignition;              // time @ which ignition starts [ms]
     int time_passivation;        // time @ which shutdown starts [ms]
-    int time_start_abort;           // time @ which abort starts [ms]
+    int time_abort;           // time @ which abort starts [ms]
     bool status_led;                // status LED state
     bool ME_state;                  // ME valve state
     bool MO_state;                  // MO valve state
@@ -21,11 +21,13 @@ typedef struct prb_memory_t
     float ein_press;                // EIN pressure (Sensata) [bar]
     float ccc_temp;                 // CCC temperature (Sensata) [°C]
     float ccc_press;                // CCC pressure (Sensata) [bar]
+    float ccc_press_buffer[5];      // CCC pressure buffer for moving average [bar]
+    int ccc_press_index;            // Index for circular buffer
     float integral;                 // integral [bar.s]
-    float engine_specific_impulse;  // engine specific impulse [N.s]
+    float engine_total_impulse;  // engine specific impulse [N.s]
     int integral_past_time;         // past time for integral calculation [ms]
     bool calculate_integral;
-    bool liftoff_detected;
+    bool passivation;
 }prb_memory_t;
 
 
@@ -48,10 +50,7 @@ private:
     //valves sequences
     void ignition_sq();
     void passivation_sq();
-    void abort_sq(int time);
-    
-    // status LED configuration
-    void status_led_ignition();
+    void abort_sq();
 
     // testing
     void stress_test(int cycles, int valve);
@@ -72,6 +71,7 @@ public:
 
     //setters
     void set_state(PRB_FSM new_state);
+    void set_passivation(bool passiv);
 
     void ignite(int time);
 
