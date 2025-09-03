@@ -57,19 +57,19 @@
 
 // Pressure check
 #ifdef TEST_WITHOUT_PRESSURE
-#define PRESSURE_CHECK_THRESHOLD -1
+#define RAMP_UP_CHECK_PRESSURE -1
 #else
-#define PRESSURE_CHECK_THRESHOLD 27.5          //for 5.38 kN of thrust
+#define RAMP_UP_CHECK_PRESSURE 27.5          //for 5.38 kN of thrust
 #endif
 
 // cst to calculate motor power
 #define G                       9.80665         //[m/s^2]
-#define I_SP                    252.22          //[N.s] specific impulse
-#define AREA_THROAT             0.0013644113    //[m^2]
-#define C_STAR                  2400.5          //[]
-#define BUILD_UP_POWER          750              //[N.s]
-#define MIN_BURN_TIME           4000             //[ms] -> 4s min time burn
-#define MAX_BURN_TIME           4500             //[ms] -> 4.5s max time burn
+#define I_SP                    250.87          //[N.s] specific impulse
+#define AREA_THROAT             0.001364411     //[m^2]
+#define C_STAR                  2437.28         //[m/S]
+#define BUILD_UP_POWER          750             //[N.s]
+#define MIN_BURN_TIME           4500            //[ms] -> 4.5s min time burn
+#define MAX_BURN_TIME           5000            //[ms] -> 5s max time burn
 
 #define FLIGHT_IMPULSE          32939           //[N.s] flight impulse
 #define CUTOFF_IMPULSE          374.292         //[N.s] cutoff impulse

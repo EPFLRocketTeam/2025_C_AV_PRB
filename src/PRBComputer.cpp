@@ -166,6 +166,7 @@ passivationStage PRBComputer::get_shutdown_stage() { return passivation_phase; }
 // ========= setter =========
 void PRBComputer::set_state(PRB_FSM new_state) { state = new_state; }
 void PRBComputer::set_passivation(bool passiv) { memory.passivation = passiv; }
+void PRBComputer::set_passivation_stage(passivationStage new_stage) { passivation_phase = new_stage; };
 
 
 // ========= ignition sequences =========
@@ -216,7 +217,7 @@ void PRBComputer::ignition_sq()
         float mean_ccc_press = sum_ccc_press / 5.0;
 
         if (millis() - memory.time_ignition >= RAMPUP_DURATION) {
-            if (mean_ccc_press >= PRESSURE_CHECK_THRESHOLD) { // CHECK 5 value before
+            if (mean_ccc_press >= RAMP_UP_CHECK_PRESSURE) { // CHECK 5 value before
                 ignition_phase = BURN;
                 memory.time_ignition = millis();
             } else {

@@ -72,6 +72,7 @@ public:
     //setters
     void set_state(PRB_FSM new_state);
     void set_passivation(bool passiv);
+    void set_passivation_stage(passivationStage new_stage);
 
     void ignite(int time);
 
