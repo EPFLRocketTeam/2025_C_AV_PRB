@@ -71,20 +71,21 @@ void receiveEvent(int numBytes) {
 
       case AV_NET_PRB_RESET:
         computer.set_state(IDLE);
+        digitalWrite(RESET, LOW); // Deactivate MUX
         break;
 
       case AV_NET_PRB_VALVES_STATE: {
         status_led(PURPLE);
-        Serial.println("Received AV_NET_PRB_VALVES_STATE command");
+        // Serial.println("Received AV_NET_PRB_VALVES_STATE command");
         uint8_t valves_ME_State = received_buff[0];
         uint8_t valves_MO_State = received_buff[1];
 
         if (valves_ME_State == AV_NET_CMD_ON) {
-          Serial.println("Opening ME_b valve");
+          // Serial.println("Opening ME_b valve");
           computer.open_valve(ME_b);
           status_led(GREEN);
         } else if (valves_ME_State == AV_NET_CMD_OFF) {
-          Serial.println("Closing ME_b valve");
+          // Serial.println("Closing ME_b valve");
           computer.close_valve(ME_b);
         } else {
           Serial.print("Unknown state for ME_b valve: ");
@@ -92,10 +93,10 @@ void receiveEvent(int numBytes) {
         }
 
         if (valves_MO_State == AV_NET_CMD_ON) {
-          Serial.println("Opening MO_bC valve");
+          // Serial.println("Opening MO_bC valve");
           computer.open_valve(MO_bC);
         } else if (valves_MO_State == AV_NET_CMD_OFF) {
-          Serial.println("Closing MO_bC valve");
+          // Serial.println("Closing MO_bC valve");
           computer.close_valve(MO_bC);
         } else {
           Serial.print("Unknown state for MO_bC valve: ");
@@ -207,7 +208,7 @@ void requestEvent() {
       break;
 
     case AV_NET_PRB_T_EIN_PT1000:
-      // Serial.println("Received AV_NET_PRB_T_EIN_PT1000 command");
+      Serial.println("Received AV_NET_PRB_T_EIN_PT1000 command");
       resp_val_float = memory.ein_temp_pt1000;
       is_resp_int = false; // We are sending a float response
       break;
@@ -295,3 +296,50 @@ void setup() {
 void loop() {
   computer.update(millis());
 }
+
+// // ...existing code...
+
+// void scanMuxChannel(uint8_t channel) {
+//   // Select channel on mux
+//   Wire2.beginTransmission(0x70);
+//   Wire2.write(channel);
+//   Wire2.endTransmission();
+
+//   Serial.print("Scanning I2C devices on mux channel 0x");
+//   Serial.println(channel, HEX);
+
+//   byte error, address;
+//   int nDevices = 0;
+//   for(address = 1; address < 127; address++ ) {
+//     Wire2.beginTransmission(address);
+//     error = Wire2.endTransmission();
+
+//     if (error == 0) {
+//       Serial.print("I2C device found at address 0x");
+//       if (address < 16)
+//         Serial.print("0");
+//       Serial.print(address, HEX);
+//       Serial.println(" !");
+//       nDevices++;
+//     } else if (error == 4) {
+//       Serial.print("Unknown error at address 0x");
+//       if (address < 16)
+//         Serial.print("0");
+//       Serial.println(address, HEX);
+//     }
+//   }
+//   if (nDevices == 0)
+//     Serial.println("No I2C devices found\n");
+//   else
+//     Serial.println("done\n");
+// }
+
+// void loop() {
+//   scanMuxChannel(0x01); // Channel 0
+//   delay(1000);
+//   scanMuxChannel(0x02); // Channel 1
+//   delay(1000);
+//   scanMuxChannel(0x04); // Channel 2
+//   delay(5000); // Wait before next full scan
+// }
+// // ...existing code...

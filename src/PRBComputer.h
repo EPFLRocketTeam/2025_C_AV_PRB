@@ -81,6 +81,7 @@ public:
 
 
 void selectI2CChannel(int channel); 
+void endI2CCommunication();
 
 void status_led(RGBColor color);
 void turn_on_sequence();

@@ -113,6 +113,8 @@ float PRBComputer::read_pressure(int sensor)
         press = ((DSP_S - (-16000.0)) * (100.0) / (16000.0 - (-16000.0))); // in bar
     }
 
+    endI2CCommunication();
+
     return press;
 }
 
@@ -152,6 +154,8 @@ float PRBComputer::read_temperature(int sensor)
         DSP_T = my_sensor.readDSP_T();
         temp = DSP_T * 82.5 / 16000 + 42.5;
     }
+
+    endI2CCommunication();
 
     return temp;
 }
@@ -367,8 +371,20 @@ void PRBComputer::abort_sq()
 }
 
 void selectI2CChannel(int channel) {
+    digitalWrite(RESET, LOW);
+    delay(10);
+    digitalWrite(RESET, HIGH);
     Wire2.beginTransmission(MUX_ADDR);
     Wire2.write(channel); // Enable only the selected channel
+    Wire2.endTransmission();
+}
+
+void endI2CCommunication() {
+    // digitalWrite(RESET, LOW);
+    // delay(100);
+    // digitalWrite(RESET, HIGH);
+    Wire2.beginTransmission(MUX_ADDR);
+    Wire2.write(0); // Disable all channels
     Wire2.endTransmission();
 }
 
@@ -450,12 +466,6 @@ void PRBComputer::update(int time)
         }
     }
     #endif
-
-    // if (time - memory.time_print >= LED_TIMEOUT) {
-    //     Serial.print("State : ");
-    //     Serial.println(state);
-    //     memory.time_print = time;
-    // }
 
     // #ifdef DEBUG
     if (time - memory.time_print >= LED_TIMEOUT) {
