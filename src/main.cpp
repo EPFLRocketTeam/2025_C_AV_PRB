@@ -130,6 +130,7 @@ void receiveEvent(int numBytes) {
         // Serial.println("Received AV_NET_PRB_PASSIVATE command");
         if (computer.get_state() == IGNITION_SQ) {
           computer.set_state(PASSIVATION_SQ);
+          computer.set_passivation_stage(PASSIVATION_ETH);
         }
         break;
       }
