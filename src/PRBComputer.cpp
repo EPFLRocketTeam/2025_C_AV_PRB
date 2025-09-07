@@ -537,10 +537,12 @@ void selectI2CChannel(int channel) {
     digitalWrite(RESET, LOW);
     delay(10);
     digitalWrite(RESET, HIGH);
-    Wire2.beginTransmission(MUX_ADDR);
+
     noInterrupts();
+    Wire2.beginTransmission(MUX_ADDR);
     Wire2.write(channel); // Enable only the selected channel
     Wire2.endTransmission();
+    interrupts();
 }
 
 
