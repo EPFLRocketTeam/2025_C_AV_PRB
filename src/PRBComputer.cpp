@@ -1,4 +1,32 @@
-// Last update: 19/08/2025
+/*
+ * File: PRBComputer.cpp
+ * Author: C - AV Team
+ * Last update: 05/09/2025
+ *
+ * Description:
+ *  This file implements the PRBComputer class, which manages the core logic and control
+ *  of the PRB (Propulsion Rocket Bench) system. It includes:
+ *    - State machine management for ignition, passivation, and abort sequences
+ *    - Valve control (open/close for main engine, oxidizer, and igniter)
+ *    - Sensor reading functions for pressure and temperature (analog and I2C)
+ *    - Memory structure for storing system state, sensor data, and control flags
+ *    - Getters and setters for system state and memory
+ *    - High-level ignition and shutdown sequence logic
+ *
+ *  The class interfaces with hardware via digital and analog I/O, as well as I2C communication.
+ *  It is designed for embedded use in the PRB avionics system.
+ */
+
+// =================== Implementation ===================
+//
+// - PRBComputer constructor/destructor
+// - Valve control methods
+// - Sensor reading methods
+// - State and memory accessors
+// - Ignition and shutdown sequence logic
+//
+// ======================================================
+
 #include "PRBComputer.h"
 #include "Wire.h"
 
@@ -32,6 +60,20 @@ PRBComputer::~PRBComputer()
 }
 
 // ========= valve control =========
+/**
+ * @brief Open the specified valve by updating its state and setting its control pin HIGH.
+ *
+ * This function sets the internal state of the specified valve to 'open' (true)
+ * in the memory structure and sends a HIGH signal to the corresponding hardware pin
+ * to physically open the valve.
+ *
+ * @param valve The identifier of the valve to open. Valid values are:
+ *              - ME_b: Main Engine valve
+ *              - MO_bC: Main Oxidizer valve
+ *              - IGNITER: Igniter
+ *
+ * If an unknown valve identifier is provided, the function does nothing.
+ */
 void PRBComputer::open_valve(int valve)
 {
     switch (valve)
@@ -51,6 +93,20 @@ void PRBComputer::open_valve(int valve)
     digitalWrite(valve, HIGH);
 }
 
+/**
+ * @brief Closes the specified valve by updating its state and setting its control pin LOW.
+ *
+ * This function sets the internal state of the specified valve to 'closed' (false)
+ * in the memory structure and sends a LOW signal to the corresponding hardware pin
+ * to physically close the valve.
+ *
+ * @param valve The identifier of the valve to close. Valid values are:
+ *              - ME_b: Main Engine valve
+ *              - MO_bC: Main Oxidizer valve
+ *              - IGNITER: Igniter
+ *
+ * If an unknown valve identifier is provided, the function does nothing.
+ */
 void PRBComputer::close_valve(int valve)
 {
     switch (valve)
@@ -73,9 +129,29 @@ void PRBComputer::close_valve(int valve)
 
 
 // ========= sensor reading =========
+/**
+ * @brief Reads the pressure value from the specified sensor.
+ *
+ * This function reads the pressure from either an analog or I2C-based sensor,
+ * depending on the sensor identifier provided. For analog sensors (e.g., KULITE),
+ * it reads the raw ADC value, converts it to voltage, and then calculates the pressure.
+ * For I2C sensors, it selects the appropriate I2C channel, reads the digital sensor value,
+ * and converts it to pressure in bar. The function handles sensor selection and
+ * communication protocol internally.
+ *
+ * @param sensor The identifier of the pressure sensor to read from. Valid values include:
+ *               - P_OIN: Analog or I2C sensor (depending on compilation flags)
+ *               - EIN_CH: I2C sensor channel
+ *               - CCC_CH: I2C sensor channel
+ *
+ * @return The measured pressure value in bar.
+ *
+ * @note If an unknown sensor identifier is provided, the function returns 0.0.
+ * @note The function assumes a 12-bit ADC and 3.3V reference for analog sensors.
+ * @note I2C communication is properly closed before returning.
+ */
 float PRBComputer::read_pressure(int sensor)
 {
-    // Serial.println("Reading pressure...");
     bool I2C = false;
     int DSP_S = 0;
     float press = 0.0;
@@ -113,13 +189,29 @@ float PRBComputer::read_pressure(int sensor)
         press = ((DSP_S - (-16000.0)) * (100.0) / (16000.0 - (-16000.0))); // in bar
     }
 
+    endI2CCommunication();
+
     return press;
 }
 
 
+/**
+ * @brief Reads the temperature from the specified sensor.
+ *
+ * This function reads the temperature value from either an analog or I2C-based sensor,
+ * depending on the sensor identifier provided. For analog sensors (e.g., T_OIN, T_EIN),
+ * it reads the analog value, converts it to voltage, calculates the resistance of a PT1000
+ * sensor using a resistor divider formula, and then computes the temperature in Celsius.
+ * For I2C-based sensors (e.g., EIN_CH, CCC_CH), it selects the appropriate I2C channel,
+ * reads the digital temperature value, and converts it to Celsius using a sensor-specific formula.
+ *
+ * @param sensor The identifier of the sensor to read from.
+ *               - For analog sensors: T_OIN, T_EIN
+ *               - For I2C sensors: EIN_CH, CCC_CH
+ * @return The measured temperature in degrees Celsius.
+ */
 float PRBComputer::read_temperature(int sensor)
 {
-    //read temperature
     bool I2C = false;
     int value = 0.0;
     float voltage = 0.0, resistance_pt1000 = 0.0, temp = 0.0;
@@ -143,7 +235,6 @@ float PRBComputer::read_temperature(int sensor)
         break;
     
     default:
-        //error
         break;
     }
     
@@ -152,6 +243,8 @@ float PRBComputer::read_temperature(int sensor)
         DSP_T = my_sensor.readDSP_T();
         temp = DSP_T * 82.5 / 16000 + 42.5;
     }
+
+    endI2CCommunication();
 
     return temp;
 }
@@ -166,9 +259,38 @@ passivationStage PRBComputer::get_shutdown_stage() { return passivation_phase; }
 // ========= setter =========
 void PRBComputer::set_state(PRB_FSM new_state) { state = new_state; }
 void PRBComputer::set_passivation(bool passiv) { memory.passivation = passiv; }
+void PRBComputer::set_passivation_stage(passivationStage new_stage) { passivation_phase = new_stage; };
 
 
-// ========= ignition sequences =========
+// ============================ ignition sequences ============================
+
+/**
+ * @brief Manages the ignition sequence state machine for the PRB computer.
+ *
+ * This function controls the ignition process by transitioning through various phases,
+ * operating valves, and monitoring system parameters such as pressure and timing.
+ * The sequence includes pre-chill, ignition, burn start, pressure check, burn, and shutdown phases.
+ * It also handles abort and passivation logic based on system state and sensor feedback.
+ *
+ * The function should be called periodically (e.g., in a main loop or timer interrupt)
+ * to ensure proper sequencing and timing of ignition events.
+ *
+ * Phases handled:
+ * - PRE_CHILL: Opens oxidizer valve for pre-chilling.
+ * - IGNITION: Closes pre-chill valve, opens igniter, and waits for ignition duration.
+ * - BURN_START_ME: Opens main engine valve, closes igniter, and waits for ignition delay.
+ * - BURN_START_MO: Opens oxidizer valve, transitions to pressure check.
+ * - PRESSURE_CHECK: Monitors chamber pressure and aborts if insufficient.
+ * - BURN: Integrates chamber pressure for total impulse or burns for a fixed duration.
+ * - BURN_STOP_MO: Closes oxidizer valve.
+ * - BURN_STOP_ME: Closes main engine valve after cutoff delay.
+ * - WAIT_FOR_PASSIVATION: Waits before transitioning to passivation sequence.
+ * - Handles abort and passivation transitions as needed.
+ *
+ * Uses timing functions (millis()) and updates internal memory/state variables.
+ * Relies on pre-defined constants for durations, pressures, and thresholds.
+ *
+ */
 void PRBComputer::ignition_sq()
 {
     switch (ignition_phase)
@@ -206,7 +328,6 @@ void PRBComputer::ignition_sq()
         break;
 
     case PRESSURE_CHECK: {
-        // mobile mean on the pressure over 5 values
         memory.ccc_press_buffer[memory.ccc_press_index] = memory.ccc_press; // in Pa
         memory.ccc_press_index = (memory.ccc_press_index + 1) % 5;
         float sum_ccc_press = 0.0;
@@ -216,7 +337,7 @@ void PRBComputer::ignition_sq()
         float mean_ccc_press = sum_ccc_press / 5.0;
 
         if (millis() - memory.time_ignition >= RAMPUP_DURATION) {
-            if (mean_ccc_press >= PRESSURE_CHECK_THRESHOLD) { // CHECK 5 value before
+            if (mean_ccc_press >= RAMP_UP_CHECK_PRESSURE) {
                 ignition_phase = BURN;
                 memory.time_ignition = millis();
             } else {
@@ -292,6 +413,29 @@ void PRBComputer::ignition_sq()
     }
 }
 
+
+// ========================== passivation sequence =============================
+
+/**
+ * @brief Handles the sequential passivation process for the PRBComputer.
+ *
+ * This function manages the passivation sequence by transitioning through different
+ * phases: PASSIVATION_ETH, PASSIVATION_LOX, and SHUTOFF. In each phase, it controls
+ * the opening and closing of specific valves and updates timing and state variables
+ * accordingly. The transitions between phases are based on elapsed time and are used
+ * to safely passivate the system.
+ *
+ * Phases:
+ * - PASSIVATION_ETH: Opens the ME_b valve (unless VSTF_AND_COLD_FLOW is defined),
+ *   sets the next phase to PASSIVATION_LOX, and records the current time.
+ * - PASSIVATION_LOX: After PASSIVATION_FUEL_DURATION has elapsed, closes ME_b,
+ *   opens MO_bC, sets the next phase to SHUTOFF, and records the current time.
+ * - SHUTOFF: After PASSIVATION_OX_DURATION has elapsed, closes MO_bC and sets the
+ *   phase to SLEEP.
+ *
+ * The function is intended to be called periodically to advance the passivation
+ * sequence based on timing and system state.
+ */
 void PRBComputer::passivation_sq()
 {
     switch (passivation_phase)
@@ -318,7 +462,6 @@ void PRBComputer::passivation_sq()
         if (millis() - memory.time_passivation >= PASSIVATION_OX_DURATION)
         {
             close_valve(MO_bC);
-            memory.time_abort = millis();
             passivation_phase = SLEEP;
         }
         break;
@@ -328,9 +471,25 @@ void PRBComputer::passivation_sq()
     }
 }
 
+
+// ============================ abort sequence ===============================
+
+/**
+ * @brief Handles the abort sequence for the PRBComputer system.
+ *
+ * This function manages the different phases of the abort sequence by closing valves
+ * and transitioning between abort states based on elapsed time and system memory.
+ * The abort sequence consists of multiple phases:
+ *   - ABORT_OXYDANT: Closes the oxidant and igniter valves, records the abort time,
+ *     and transitions to the ethanol abort phase.
+ *   - ABORT_ETHANOL: After a defined cutoff delay, closes the ethanol valve.
+ *   - WAIT_FOR_PASSIVATION_ABORT: After a passivation delay, checks if passivation is required.
+ *     If so, transitions to the passivation sequence.
+ * The function uses the system's memory and timing functions to ensure safe and orderly
+ * shutdown of the relevant components during an abort event.
+ */
 void PRBComputer::abort_sq()
 {
-    // Handle abort sequence
     switch (abort_phase)
     {
         case ABORT_OXYDANT:
@@ -354,8 +513,6 @@ void PRBComputer::abort_sq()
                     state = PASSIVATION_SQ;
                     passivation_phase = PASSIVATION_ETH;
                     memory.time_passivation = millis();
-                } else {
-                    state = IDLE;
                 }
             }
             break;
@@ -365,27 +522,69 @@ void PRBComputer::abort_sq()
     }
 }
 
+// ============================ I2C multiplexer control ===============================
+
+/**
+ * @brief Selects a specific I2C channel on the multiplexer.
+ *
+ * This function resets the I2C multiplexer by toggling the RESET pin,
+ * then enables only the specified channel by sending the channel number
+ * to the multiplexer via the I2C bus (Wire2).
+ *
+ * @param channel The channel number to enable on the I2C multiplexer.
+ */
 void selectI2CChannel(int channel) {
+    digitalWrite(RESET, LOW);
+    delay(10);
+    digitalWrite(RESET, HIGH);
     Wire2.beginTransmission(MUX_ADDR);
     noInterrupts();
     Wire2.write(channel); // Enable only the selected channel
-    interrupts();
     Wire2.endTransmission();
 }
 
+
+/**
+ * @brief Ends I2C communication by disabling all channels on the I2C multiplexer.
+ *
+ * This function sends a command to the I2C multiplexer at address MUX_ADDR
+ * to disable all its channels, effectively ending any ongoing I2C communication
+ * through the multiplexer. It uses the Wire2 interface for communication.
+ */
+void endI2CCommunication() {
+    Wire2.beginTransmission(MUX_ADDR);
+    Wire2.write(0); // Disable all channels
+    Wire2.endTransmission();
+}
+
+ /**
+ * @brief Initiates the ignition sequence for the PRBComputer.
+ *
+ * This function sets the internal state to indicate that the ignition sequence has started.
+ * It also sets the ignition phase to the pre-chill stage and records the ignition time in memory.
+ *
+ * @param time The current time (in appropriate units) at which ignition is initiated.
+ */
 void PRBComputer::ignite(int time)
 {
-    // Start the ignition sequence
     state = IGNITION_SQ;
     ignition_phase = PRE_CHILL;
     memory.time_ignition = time;
 }
 
+/**
+ * @brief Updates the PRBComputer state and sensor readings.
+ *
+ * This function manages the state machine of the PRBComputer, handling different states
+ * such as IDLE, CLEAR_TO_IGNITE, IGNITION_SQ, PASSIVATION_SQ, and ABORT. It also reads
+ * various sensors (temperature and pressure) and updates the internal memory with the
+ * latest readings. The function includes optional debug output to print the current state
+ * and sensor values at regular intervals.
+ *
+ * @param time The current time (in milliseconds) used for timing operations.
+ */
 void PRBComputer::update(int time)
 {
-    // Update the state machine
-    // Declare variables outside the switch to avoid bypassing initialization
-
     switch (state)
     {
         case IDLE:
@@ -445,22 +644,17 @@ void PRBComputer::update(int time)
         if (memory.integral_past_time == 0) {
             memory.integral_past_time = time;
         } else {
-            memory.integral += memory.ccc_press * (time - memory.integral_past_time); // in bar.s
+            float chamber_pressure_bar = memory.ccc_press / 100000.0; // Convert Pa to bar
+            memory.integral += chamber_pressure_bar * (time - memory.integral_past_time); // in bar.ms
             memory.integral_past_time = time;
             memory.engine_total_impulse = I_SP * G * (AREA_THROAT/C_STAR) * memory.integral;
         }
     }
     #endif
 
-    // if (time - memory.time_print >= LED_TIMEOUT) {
-    //     Serial.print("State : ");
-    //     Serial.println(state);
-    //     memory.time_print = time;
-    // }
-
-    // #ifdef DEBUG
-    if (time - memory.time_print >= LED_TIMEOUT) {
-        /*Serial.print("State : ");
+    #ifdef DEBUG
+    if (current_time - memory.time_print >= LED_TIMEOUT) {
+        Serial.print("State : ");
         Serial.println(state);
         Serial.print("EIN T°: ");
         Serial.println(memory.ein_temp_sensata);
@@ -475,35 +669,10 @@ void PRBComputer::update(int time)
         Serial.print("EIN T° (PT1000): ");
         Serial.println(memory.ein_temp_pt1000);
         Serial.print("OIN P: ");
-        Serial.println(memory.oin_press);*/
-        memory.time_print = time;
+        Serial.println(memory.oin_press);
+        memory.time_print = current_time;
     }
-    // #endif
-}
-
-// ================ Stress test ================
-
-void PRBComputer::stress_test(int cycles, int valve)
-{
-    int count_cycles = 0;
-    bool valve_open = false;
-
-    while (count_cycles < cycles)
-    {
-        if (valve_open) {
-            close_valve(valve);
-            status_led(OFF);
-            valve_open = false;
-        } else {
-            open_valve(valve);
-            count_cycles++;
-            status_led(GREEN);
-            valve_open = true;
-        }
-        delay(250);
-    }
-    Serial.print("Stress test completed. Iterations: ");
-    Serial.println(count_cycles);
+    #endif
 }
 
 

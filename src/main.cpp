@@ -1,4 +1,4 @@
-// Last update: 19/08/2025
+// Last update: 05/09/2025
 #include <Arduino.h>
 #include <Wire.h>
 #include "PRBComputer.h"
@@ -6,26 +6,53 @@
 
 PRBComputer computer(IDLE);
 
-// Variables for communication
+// ================== I2C communication variables =================
 volatile uint8_t received_buff[4];
 volatile uint8_t received_cmd = 0;
-
-volatile float resp_val_float = 0.0; // Hardcoded response
-volatile uint32_t resp_val_int = 0x00; // Hardcoded response
+volatile float resp_val_float = 0.0;
+volatile uint32_t resp_val_int = 0x00;
 volatile bool is_resp_int = false;
 
-// I2C receive handler
+// ================= I2C event handlers =================
+
+/**
+ * @brief I2C event handler for receiving commands and data from the master device.
+ *
+ * This function is called automatically when data is received over the I2C bus (Wire1).
+ * It reads the incoming command byte and up to 4 additional data bytes, then processes
+ * the command accordingly. The function updates system state, controls hardware (such as valves
+ * and igniters), and manages abort/passivation logic based on the received command and data.
+ *
+ * Command handling includes:
+ * - AV_NET_PRB_TIMESTAMP: Updates status LED (WHITE).
+ * - AV_NET_PRB_WAKE_UP: Reserved for wake-up logic. -> Deprived
+ * - AV_NET_PRB_CLEAR_TO_IGNITE: Sets system state to CLEAR_TO_IGNITE if requested.
+ * - AV_NET_PRB_RESET: Resets system state and deactivates MUX.
+ * - AV_NET_PRB_VALVES_STATE: Opens or closes valves based on received states.
+ * - AV_NET_PRB_IGNITER: Initiates ignition if system is clear to ignite.
+ * - AV_NET_PRB_ABORT: Sets system to ABORT state, with optional passivation.
+ * - AV_NET_PRB_PASSIVATE: Initiates passivation sequence if in ignition sequence.
+ * - Default: Handles unknown or read commands.
+ *
+ * Debug output is available if DEBUG is defined.
+ * 
+ * @param numBytes Number of bytes received from the I2C master.
+ *
+ * @note This function should not be called directly; it is registered as an I2C event handler.
+ * @note The function assumes global variables and objects such as Wire1, received_cmd, received_buff,
+ *       computer, and various command/state constants are defined elsewhere.
+ * @note The function flushes the I2C buffer at the end to ensure all data is processed.
+ */
 void receiveEvent(int numBytes) {
   for (int i = 0; i < 4; ++i) received_buff[i] = 0;
-
   int bytesRead = 0;
+
   if (numBytes >= 1) {
+
     if (Wire1.available()) {
-      received_cmd = Wire1.read(); // Read the command
+      received_cmd = Wire1.read();
       bytesRead++;
     }
-
-    // status_led(WHITE);
 
     #ifdef DEBUG
     Serial.print("Received I2C command, nb bytes:");
@@ -58,8 +85,6 @@ void receiveEvent(int numBytes) {
       }
 
       case AV_NET_PRB_WAKE_UP:
-        // Serial.println("Received AV_NET_PRB_WAKE_UP command");
-        // status_led(TEAL);
         break;
 
       case AV_NET_PRB_CLEAR_TO_IGNITE:
@@ -71,20 +96,21 @@ void receiveEvent(int numBytes) {
 
       case AV_NET_PRB_RESET:
         computer.set_state(IDLE);
+        digitalWrite(RESET, LOW); // Deactivate MUX
         break;
 
       case AV_NET_PRB_VALVES_STATE: {
         status_led(PURPLE);
-        Serial.println("Received AV_NET_PRB_VALVES_STATE command");
+        // Serial.println("Received AV_NET_PRB_VALVES_STATE command");
         uint8_t valves_ME_State = received_buff[0];
         uint8_t valves_MO_State = received_buff[1];
 
         if (valves_ME_State == AV_NET_CMD_ON) {
-          Serial.println("Opening ME_b valve");
+          // Serial.println("Opening ME_b valve");
           computer.open_valve(ME_b);
           status_led(GREEN);
         } else if (valves_ME_State == AV_NET_CMD_OFF) {
-          Serial.println("Closing ME_b valve");
+          // Serial.println("Closing ME_b valve");
           computer.close_valve(ME_b);
         } else {
           Serial.print("Unknown state for ME_b valve: ");
@@ -92,10 +118,10 @@ void receiveEvent(int numBytes) {
         }
 
         if (valves_MO_State == AV_NET_CMD_ON) {
-          Serial.println("Opening MO_bC valve");
+          // Serial.println("Opening MO_bC valve");
           computer.open_valve(MO_bC);
         } else if (valves_MO_State == AV_NET_CMD_OFF) {
-          Serial.println("Closing MO_bC valve");
+          // Serial.println("Closing MO_bC valve");
           computer.close_valve(MO_bC);
         } else {
           Serial.print("Unknown state for MO_bC valve: ");
@@ -128,7 +154,10 @@ void receiveEvent(int numBytes) {
 
       case AV_NET_PRB_PASSIVATE: {
         // Serial.println("Received AV_NET_PRB_PASSIVATE command");
-        computer.set_state(PASSIVATION_SQ);
+        if (computer.get_state() == IGNITION_SQ) {
+          computer.set_state(PASSIVATION_SQ);
+          computer.set_passivation_stage(PASSIVATION_ETH);
+        }
         break;
       }
 
@@ -141,23 +170,40 @@ void receiveEvent(int numBytes) {
   }
 }
 
-// I2C request handler
-void requestEvent() {
-  // tone(BUZZER, 440, 500); // Indicate request received
-  // status_led(GREEN);
 
+/**
+ * @brief I2C event handler for responding to master device requests.
+ *
+ * This function is called automatically when the master device requests data over the I2C bus (Wire1).
+ * It checks the last received command and prepares an appropriate response based on the current
+ * state of the system and the requested information. The response can be either an integer or a float,
+ * depending on the command.
+ *
+ * The function handles various commands, including:
+ * - AV_NET_PRB_IS_WOKEN_UP: Responds with whether the system is awake.
+ * - AV_NET_PRB_FSM_PRB: Responds with the current FSM state.
+ * - AV_NET_PRB_P_OIN, AV_NET_PRB_T_OIN, AV_NET_PRB_P_EIN, AV_NET_PRB_T_EIN, AV_NET_PRB_P_CCC, AV_NET_PRB_T_CCC,
+ *   AV_NET_PRB_T_EIN_PT1000: Responds with corresponding pressure or temperature readings.
+ * - AV_NET_PRB_VALVES_STATE: Responds with the current state of the valves.
+ * - AV_NET_PRB_SPECIFIC_IMP: Responds with the engine's specific impulse.
+ *
+ * Debug output is available if DEBUG is defined.
+ * 
+ * @note This function should not be called directly; it is registered as an I2C event handler.
+ * @note The function assumes global variables and objects such as Wire1, received_cmd, resp_val_float,
+ *       resp_val_int, is_resp_int, computer, prb_memory_t structure, and various command/state constants
+ *       are defined elsewhere.
+ * @note The function flushes the I2C buffer at the end to ensure all data is sent.
+ */
+void requestEvent() {
   if (Wire1.available()) {
     received_cmd = Wire1.read(); // Read the command
   }
-
-  // Serial.print("(requestEvent) Received command: ");
-  // Serial.println(received_cmd);
 
   prb_memory_t memory = computer.get_memory();
 
   switch (received_cmd) {
     case AV_NET_PRB_IS_WOKEN_UP:
-      // Serial.println("Received AV_NET_PRB_IS_WOKEN_UP command");
       resp_val_int = AV_NET_CMD_ON;
       is_resp_int = true;
       break;
@@ -168,49 +214,41 @@ void requestEvent() {
       break;
 
     case AV_NET_PRB_P_OIN:
-      // Serial.println("Received AV_NET_PRB_P_OIN command");
       resp_val_float = memory.oin_press;
       is_resp_int = false; // We are sending a float response
       break;
 
     case AV_NET_PRB_T_OIN:
-      // Serial.println("Received AV_NET_PRB_T_OIN command");
       resp_val_float = memory.oin_temp;
       is_resp_int = false; // We are sending a float response
       break;
 
     case AV_NET_PRB_P_EIN:
-      // Serial.println("Received AV_NET_PRB_P_EIN command");
       resp_val_float = memory.ein_press;
       is_resp_int = false; // We are sending a float response
       break;
 
     case AV_NET_PRB_T_EIN:
-      // Serial.println("Received AV_NET_PRB_T_EIN command");
       resp_val_float = memory.ein_temp_sensata;
       is_resp_int = false; // We are sending a float response
       break;
 
     case AV_NET_PRB_P_CCC:
-      // Serial.println("Received AV_NET_PRB_P_CCC command");
       resp_val_float = memory.ccc_press;
       is_resp_int = false; // We are sending a float response
       break;
 
     case AV_NET_PRB_T_CCC:
-      // Serial.println("Received AV_NET_PRB_T_CCC command");
       resp_val_float = memory.ccc_temp;
       is_resp_int = false; // We are sending a float response
       break;
 
     case AV_NET_PRB_T_EIN_PT1000:
-      // Serial.println("Received AV_NET_PRB_T_EIN_PT1000 command");
       resp_val_float = memory.ein_temp_pt1000;
       is_resp_int = false; // We are sending a float response
       break;
 
     case AV_NET_PRB_VALVES_STATE: {
-      // Serial.println("Received AV_NET_PRB_VALVES_STATE read command");
       bool ME_state = memory.ME_state;
       bool MO_state = memory.MO_state;
 
@@ -223,7 +261,6 @@ void requestEvent() {
     }
 
     case AV_NET_PRB_SPECIFIC_IMP: {
-      // Serial.println("Received AV_NET_PRB_SPECIFIC_IMP read command");
       resp_val_float = memory.engine_total_impulse;
       is_resp_int = false; // We are sending a float response
       break;
@@ -232,14 +269,22 @@ void requestEvent() {
     default:
       break;
   }
+  
+  #ifdef DEBUG
+  Serial.print("Preparing to send response for command: ");
+  Serial.println(received_cmd);
+  if (is_resp_int) {
+    Serial.print("Response is int: ");
+    Serial.println(resp_val_int, HEX);
+  } else {
+    Serial.print("Response is float: ");
+    Serial.println(resp_val_float);
+  }
+  #endif
 
   if (is_resp_int) {
-    // Serial.print("Sending int response value (HEX): ");
-    // Serial.println(resp_val_int, HEX);
     Wire1.write((uint8_t*)&resp_val_int, AV_NET_XFER_SIZE);
   } else {
-    // Serial.print("Sending float response value (HEX): ");
-    // Serial.println(resp_val_float, HEX);
     Wire1.write((uint8_t*)&resp_val_float, AV_NET_XFER_SIZE);
   }
   Wire1.flush(); // Ensure all data is sent
@@ -285,9 +330,6 @@ void setup() {
 
   Serial.println("PRB Computer setup done");
 }
-
-// PTE7300_I2C mySensor; // attach sensor
-// int16_t DSP_T1;
 
 void loop() {
   computer.update(millis());
