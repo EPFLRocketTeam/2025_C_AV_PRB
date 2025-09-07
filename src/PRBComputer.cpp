@@ -655,7 +655,7 @@ void PRBComputer::update(int time)
     #endif
 
     #ifdef DEBUG
-    if (current_time - memory.time_print >= LED_TIMEOUT) {
+    if (time - memory.time_print >= LED_TIMEOUT) {
         Serial.print("State : ");
         Serial.println(state);
         Serial.print("EIN T°: ");
@@ -672,7 +672,7 @@ void PRBComputer::update(int time)
         Serial.println(memory.ein_temp_pt1000);
         Serial.print("OIN P: ");
         Serial.println(memory.oin_press);
-        memory.time_print = current_time;
+        memory.time_print = time;
     }
     #endif
 }
