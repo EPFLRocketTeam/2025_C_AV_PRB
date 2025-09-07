@@ -91,11 +91,12 @@ unsigned int PTE7300_I2C::readRegisterNoCRC(uint8_t address, unsigned int number
   
   unsigned int bytesRead = 0; // default return var
 
+  noInterrupts();
   Wire2.beginTransmission(_nodeAddress);
   Wire2.write(address); //Send register address
   Wire2.endTransmission();
   Wire2.requestFrom(_nodeAddress, number * 2); //Request register, note that register is 2 bytes wide
-
+  interrupts();
   bytesRead = Wire2.available();
   if ( bytesRead >= number * 2 )
   {
@@ -137,11 +138,13 @@ unsigned int PTE7300_I2C::readRegisterCRC(uint8_t address, unsigned int number, 
   crc8_hold = this->calc_crc8(0xD5,0xFF,all,3);
   // Serial.println("Info: New CRC8-stub is 0x" + String(crc8_hold, HEX));
 
+  noInterrupts();
   Wire2.beginTransmission(_nodeAddress | 1); //indicate CRC-transmission by setting first address bit to 1
   Wire2.write(address); //Send register address
   Wire2.write((((number*2)-1) << 4) | (crc4 & 0x0F));
   Wire2.endTransmission();
   Wire2.requestFrom(_nodeAddress | 1,(number*2)+1); //Request registers, note that registers 2 bytes wide
+  interrupts();
   node = ((_nodeAddress << 1) & 0xFC) | 0x03; // CRC-Flag 1, Readflag 1
   bytesRead = Wire2.available();
   // Serial.println("Bytes read: " + String(bytesRead, DEC));

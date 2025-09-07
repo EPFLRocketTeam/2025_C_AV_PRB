@@ -367,7 +367,9 @@ void PRBComputer::abort_sq()
 
 void selectI2CChannel(int channel) {
     Wire2.beginTransmission(MUX_ADDR);
+    noInterrupts();
     Wire2.write(channel); // Enable only the selected channel
+    interrupts();
     Wire2.endTransmission();
 }
 
@@ -458,7 +460,7 @@ void PRBComputer::update(int time)
 
     // #ifdef DEBUG
     if (time - memory.time_print >= LED_TIMEOUT) {
-        Serial.print("State : ");
+        /*Serial.print("State : ");
         Serial.println(state);
         Serial.print("EIN T°: ");
         Serial.println(memory.ein_temp_sensata);
@@ -473,7 +475,7 @@ void PRBComputer::update(int time)
         Serial.print("EIN T° (PT1000): ");
         Serial.println(memory.ein_temp_pt1000);
         Serial.print("OIN P: ");
-        Serial.println(memory.oin_press);
+        Serial.println(memory.oin_press);*/
         memory.time_print = time;
     }
     // #endif

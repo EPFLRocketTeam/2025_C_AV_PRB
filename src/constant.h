@@ -3,7 +3,7 @@
 #include "vector"
 
 // ================= ifdef defines =================
-// #define DEBUG
+#define DEBUG
 #define TEST_WITHOUT_PRESSURE
 #define INTEGRATE_CHAMBER_PRESSURE
 // #define KULITE
