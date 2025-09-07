@@ -25,7 +25,7 @@
 PTE7300_I2C::PTE7300_I2C()
 {
   _nodeAddress = DEFAULT_NODE_ADDRESS;
-  _bUseCRC = true; // CRC flag
+  _bUseCRC = false; // CRC flag
 }
 
 bool PTE7300_I2C::isConnected()
