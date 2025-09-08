@@ -28,6 +28,7 @@ typedef struct prb_memory_t
     int time_ignition;              // time @ which ignition starts [ms]
     int time_passivation;           // time @ which shutdown starts [ms]
     int time_abort;                 // time @ which abort starts [ms]
+    int time_sensors_update;        // time @which sensors where last updated [ms]
     bool status_led;                // status LED state
     bool ME_state;                  // ME valve state
     bool MO_state;                  // MO valve state

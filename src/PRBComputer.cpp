@@ -554,9 +554,11 @@ void selectI2CChannel(int channel) {
  * through the multiplexer. It uses the Wire2 interface for communication.
  */
 void endI2CCommunication() {
+    noInterrupts();
     Wire2.beginTransmission(MUX_ADDR);
     Wire2.write(0); // Disable all channels
     Wire2.endTransmission();
+    interrupts();
 }
 
  /**
@@ -633,14 +635,16 @@ void PRBComputer::update(int time)
             break;
     }
 
-    memory.ein_temp_sensata = read_temperature(EIN_CH);
-    memory.ein_press = read_pressure(EIN_CH);
-    memory.ccc_temp = read_temperature(CCC_CH);
-    memory.ccc_press = read_pressure(CCC_CH);
-    memory.oin_temp = read_temperature(T_OIN);
-    memory.ein_temp_pt1000 = read_temperature(T_EIN);
-    memory.oin_press = read_pressure(P_OIN);
-
+    if(time - memory.time_sensors_update > SENSORS_POLLING_RATE_MS) {
+        memory.ein_temp_sensata = read_temperature(EIN_CH);
+        memory.ein_press = read_pressure(EIN_CH);
+        memory.ccc_temp = read_temperature(CCC_CH);
+        memory.ccc_press = read_pressure(CCC_CH);
+        memory.oin_temp = read_temperature(T_OIN);
+        memory.ein_temp_pt1000 = read_temperature(T_EIN);
+        memory.oin_press = read_pressure(P_OIN);
+        memory.time_sensors_update = time;
+    }
     #ifdef INTEGRATE_CHAMBER_PRESSURE
     if (memory.calculate_integral) {
         if (memory.integral_past_time == 0) {
@@ -676,7 +680,6 @@ void PRBComputer::update(int time)
     }
     #endif
 }
-
 
 // =============== status LED configuration ===============
 

@@ -87,7 +87,7 @@
 
 // Status 
 #define LED_TIMEOUT 1000 // 1 second
-
+#define SENSORS_POLLING_RATE_MS 50 // 20Hz
 // ================= FSM structures =================
 
 enum ignitionStage
