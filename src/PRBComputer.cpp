@@ -644,16 +644,17 @@ void PRBComputer::update(int time)
         memory.ein_temp_pt1000 = read_temperature(T_EIN);
         memory.oin_press = read_pressure(P_OIN);
         memory.time_sensors_update = time;
-    }
-    #ifdef INTEGRATE_CHAMBER_PRESSURE
-    if (memory.calculate_integral) {
-        if (memory.integral_past_time == 0) {
-            memory.integral_past_time = time;
-        } else {
-            float chamber_pressure_bar = memory.ccc_press / 100000.0; // Convert Pa to bar
-            memory.integral += chamber_pressure_bar * (time - memory.integral_past_time); // in bar.ms
-            memory.integral_past_time = time;
-            memory.engine_total_impulse = I_SP * G * (AREA_THROAT/C_STAR) * memory.integral;
+
+        #ifdef INTEGRATE_CHAMBER_PRESSURE
+        if (memory.calculate_integral) {
+            if (memory.integral_past_time == 0) {
+                memory.integral_past_time = time;
+            } else {
+                float chamber_pressure_bar = memory.ccc_press / 100000.0; // Convert Pa to bar
+                memory.integral += chamber_pressure_bar * (time - memory.integral_past_time); // in bar.ms
+                memory.integral_past_time = time;
+                memory.engine_total_impulse = I_SP * G * (AREA_THROAT/C_STAR) * memory.integral;
+            }
         }
     }
     #endif
