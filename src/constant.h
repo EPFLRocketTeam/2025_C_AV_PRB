@@ -52,9 +52,9 @@
 // ================= Ignition sequence timing =================
 #define PRECHILL_DURATION           200             // 200ms -> prechill duration
 #define IGNITER_DURATION            4000            // 4s -> ignite
-#define IGNITION_DELAY              250             // 250ms -> start burn
+#define IGNITION_DELAY              200             // 200ms -> start burn
 #define RAMPUP_DURATION             200             // 200ms -> pressure check
-#define BURN_DURATION               4250            // 4.25s -> stop burn
+#define BURN_DURATION               4250            // (Ignored if using ISP) 4.25s -> stop burn
 #define CUTOFF_DELAY                250             // Close ME_b valve
 #define PASSIVATION_DELAY           120000          // 120s -> max passivation
 
@@ -79,15 +79,15 @@
 #define C_STAR                  2437.28                             //[m/S]
 #define BUILD_UP_POWER          750                                 //[N.s]
 #define MIN_BURN_TIME           4500                                //[ms] -> 4.5s min time burn
-#define MAX_BURN_TIME           5000                                //[ms] -> 5s max time burn
+#define MAX_BURN_TIME           5500                                //[ms] -> 5s max time burn
 
-#define FLIGHT_IMPULSE          32939                               //[N.s] flight impulse
+#define FLIGHT_IMPULSE          33269                               //[N.s] flight impulse
 #define CUTOFF_IMPULSE          374.292                             //[N.s] cutoff impulse
 #define I_TARGET                (FLIGHT_IMPULSE - CUTOFF_IMPULSE)   //[N.s] target impulse
 
 // Status 
 #define LED_TIMEOUT 1000 // 1 second
-#define SENSORS_POLLING_RATE_MS 50 // 20Hz
+#define SENSORS_POLLING_RATE_MS 100 // 10Hz
 // ================= FSM structures =================
 
 enum ignitionStage

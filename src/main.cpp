@@ -301,7 +301,9 @@ void setup() {
 
   pinMode(T_EIN, INPUT);
   pinMode(T_OIN, INPUT);
+#ifdef KULITE
   pinMode(P_OIN, INPUT);
+#endif
 
   pinMode(RESET, OUTPUT);
   pinMode(RGB_RED, OUTPUT);

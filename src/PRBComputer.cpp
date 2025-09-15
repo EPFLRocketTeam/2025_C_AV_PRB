@@ -30,9 +30,9 @@
 #include "PRBComputer.h"
 #include "Wire.h"
 
-PRBComputer::PRBComputer(PRB_FSM state)
+PRBComputer::PRBComputer(PRB_FSM state_)
 {
-    state = state;
+    state = state_;
     memory.time_ignition = 0;
     memory.time_passivation = 0;
     ignition_phase = NOGO;
