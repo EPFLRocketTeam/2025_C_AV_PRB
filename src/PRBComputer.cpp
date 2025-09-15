@@ -350,15 +350,15 @@ void PRBComputer::ignition_sq()
         }
     
     case BURN: {
-        #ifdef INTEGRATE_CHAMBER_PRESSURE
+#ifdef INTEGRATE_CHAMBER_PRESSURE
 
         if (memory.integral_past_time == 0) {
             memory.integral_past_time = millis();
             break;
         }
 
-        float chamber_pressure_bar = memory.ccc_press / 100000.0; // Convert Pa to bar
-        memory.integral += chamber_pressure_bar * (millis() - memory.integral_past_time); // in Pa.s
+        float chamber_pressure_Pa = memory.ccc_press * 1e5; // Convert bar to Pa
+        memory.integral += chamber_pressure_Pa * (millis() - memory.integral_past_time) / 1000.0; // in Pa.s
         memory.integral_past_time = millis();
 
         memory.engine_total_impulse = I_SP * G * (AREA_THROAT/C_STAR) * memory.integral;
@@ -367,13 +367,13 @@ void PRBComputer::ignition_sq()
             break;
         }
 
-        if (memory.integral >= (I_TARGET * C_STAR) / (I_SP * G * AREA_THROAT) ||
+        if (/*memory.integral >= (I_TARGET * C_STAR) / (I_SP * G * AREA_THROAT) ||*/
             millis() - memory.time_ignition >= (MAX_BURN_TIME)) {
             ignition_phase = BURN_STOP_MO;
             memory.time_ignition = millis();
         }
 
-        #else
+#else
 
         if (millis() - memory.time_ignition >= BURN_DURATION) {
             ignition_phase = BURN_STOP_MO;
@@ -381,7 +381,7 @@ void PRBComputer::ignition_sq()
         }
         break;
 
-        #endif
+#endif
         }
 
         case BURN_STOP_MO:
@@ -645,21 +645,21 @@ void PRBComputer::update(int time)
         memory.oin_press = read_pressure(P_OIN);
         memory.time_sensors_update = time;
 
-        #ifdef INTEGRATE_CHAMBER_PRESSURE
-        if (memory.calculate_integral) {
-            if (memory.integral_past_time == 0) {
-                memory.integral_past_time = time;
-            } else {
-                float chamber_pressure_pa = memory.ccc_press / 1e5;
-                memory.integral += chamber_pressure_pa * (time - memory.integral_past_time)/1000; // in Pa.ms
-                memory.integral_past_time = time;
-                memory.engine_total_impulse = I_SP * G * (AREA_THROAT/C_STAR) * memory.integral;
-            }
-        }
+#ifdef INTEGRATE_CHAMBER_PRESSURE
+        // if (memory.calculate_integral) {
+        //     if (memory.integral_past_time == 0) {
+        //         memory.integral_past_time = time;
+        //     } else {
+        //         float chamber_pressure_pa = memory.ccc_press / 1e5;
+        //         memory.integral += chamber_pressure_pa * (time - memory.integral_past_time)/1000; // in Pa.ms
+        //         memory.integral_past_time = time;
+        //         memory.engine_total_impulse = I_SP * G * (AREA_THROAT/C_STAR) * memory.integral;
+        //     }
+        // }
+#endif
     }
-    #endif
 
-    #ifdef DEBUG
+#ifdef DEBUG
     if (time - memory.time_print >= LED_TIMEOUT) {
         Serial.print("State : ");
         Serial.println(state);
@@ -679,7 +679,7 @@ void PRBComputer::update(int time)
         Serial.println(memory.oin_press);
         memory.time_print = time;
     }
-    #endif
+#endif
 }
 
 // =============== status LED configuration ===============
