@@ -650,7 +650,8 @@ void PRBComputer::update(int time)
             if (memory.integral_past_time == 0) {
                 memory.integral_past_time = time;
             } else {
-                memory.integral += memory.ccc_press * (time - memory.integral_past_time)/1000; // in Pa.ms
+                float chamber_pressure_pa = memory.ccc_press / 1e5;
+                memory.integral += chamber_pressure_pa * (time - memory.integral_past_time)/1000; // in Pa.ms
                 memory.integral_past_time = time;
                 memory.engine_total_impulse = I_SP * G * (AREA_THROAT/C_STAR) * memory.integral;
             }
