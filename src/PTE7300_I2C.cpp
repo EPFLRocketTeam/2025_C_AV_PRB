@@ -70,7 +70,7 @@ unsigned int PTE7300_I2C::readRegister(uint8_t address, unsigned int number, uin
 		if (bytesRead != (number*2)+1)
 		{
 		  // "Error: Could not read from register!"
-		  return 0;
+		  return NAN;
 		}
 		return bytesRead;
 	}
@@ -80,7 +80,7 @@ unsigned int PTE7300_I2C::readRegister(uint8_t address, unsigned int number, uin
 		if (bytesRead != (number*2))
 		{
 		  // "Error: Could not read from register!"
-		  return 0;
+		  return NAN;
 		}
 		return bytesRead;
 	}

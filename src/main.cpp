@@ -94,10 +94,13 @@ void receiveEvent(int numBytes) {
         }
         break;
 
-      case AV_NET_PRB_RESET:
-        computer.set_state(IDLE);
-        digitalWrite(RESET, LOW); // Deactivate MUX
+      case AV_NET_PRB_RESET: {
+        if (computer.get_state() == ABORT || computer.get_state() == PASSIVATION_SQ) {
+          computer.set_state(IDLE);
+          digitalWrite(RESET, LOW); // Deactivate MUX
+        }
         break;
+      }
 
       case AV_NET_PRB_VALVES_STATE: {
         status_led(PURPLE);

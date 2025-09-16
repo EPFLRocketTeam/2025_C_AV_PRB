@@ -17,7 +17,7 @@
 #include "vector"
 
 // ================= ifdef defines =================
-#define DEBUG
+// #define DEBUG
 #define TEST_WITHOUT_PRESSURE
 #define INTEGRATE_CHAMBER_PRESSURE
 // #define KULITE
@@ -79,7 +79,7 @@
 #define C_STAR                  2437.28                             //[m/S]
 #define BUILD_UP_POWER          750                                 //[N.s]
 #define MIN_BURN_TIME           4500                                //[ms] -> 4.5s min time burn
-#define MAX_BURN_TIME           5500                                //[ms] -> 5s max time burn
+#define MAX_BURN_TIME           5500                                //[ms] -> 5.5s max time burn
 
 #define FLIGHT_IMPULSE          33269                               //[N.s] flight impulse
 #define CUTOFF_IMPULSE          374.292                             //[N.s] cutoff impulse

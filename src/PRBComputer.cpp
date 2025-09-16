@@ -186,7 +186,24 @@ float PRBComputer::read_pressure(int sensor)
     if (I2C)
     {
         DSP_S = my_sensor.readDSP_S();
-        press = ((DSP_S - (-16000.0)) * (100.0) / (16000.0 - (-16000.0))); // in bar
+        if (DSP_S != NAN) {
+            press = ((DSP_S - (-16000.0)) * (100.0) / (16000.0 - (-16000.0))); // in bar
+        } else {
+
+            switch (sensor)
+            {
+            case EIN_CH:
+                press = memory.ein_press; // keep last value if error
+                break;
+
+            case CCC_CH:
+                press = memory.ccc_press; // keep last value if error
+                break;
+            
+            default:
+                break;
+            }
+        }
     }
 
     endI2CCommunication();
@@ -241,7 +258,24 @@ float PRBComputer::read_temperature(int sensor)
     if (I2C)
     {
         DSP_T = my_sensor.readDSP_T();
-        temp = DSP_T * 82.5 / 16000 + 42.5;
+
+        if (DSP_T != NAN) {
+            temp = DSP_T * 82.5 / 16000 + 42.5;
+        } else {
+            switch (sensor)
+            {
+            case EIN_CH:
+                temp = memory.ein_temp_sensata; // keep last value if error
+                break;
+
+            case CCC_CH:
+                temp = memory.ccc_temp; // keep last value if error
+                break;
+            
+            default:
+                break;
+            }
+        }
     }
 
     endI2CCommunication();
@@ -339,6 +373,11 @@ void PRBComputer::ignition_sq()
         if (millis() - memory.time_ignition >= RAMPUP_DURATION) {
             if (mean_ccc_press >= RAMP_UP_CHECK_PRESSURE) {
                 ignition_phase = BURN;
+                memory.time_burn_debug = millis();
+
+                #ifdef INTEGRATE_CHAMBER_PRESSURE
+                    memory.calculate_integral = true;
+                #endif
                 memory.time_ignition = millis();
             } else {
                 state = ABORT;
@@ -367,11 +406,16 @@ void PRBComputer::ignition_sq()
             break;
         }
 
-        if (/*memory.integral >= (I_TARGET * C_STAR) / (I_SP * G * AREA_THROAT) ||*/
+
+        if (memory.integral >= (I_TARGET * C_STAR) / (I_SP * G * AREA_THROAT) ||
             millis() - memory.time_ignition >= (MAX_BURN_TIME)) {
             ignition_phase = BURN_STOP_MO;
+            Serial.print("Total burn time: ");
+            Serial.println(millis() - memory.time_burn_debug);
             memory.time_ignition = millis();
         }
+
+        break;
 
 #else
 
@@ -646,16 +690,16 @@ void PRBComputer::update(int time)
         memory.time_sensors_update = time;
 
 #ifdef INTEGRATE_CHAMBER_PRESSURE
-        // if (memory.calculate_integral) {
-        //     if (memory.integral_past_time == 0) {
-        //         memory.integral_past_time = time;
-        //     } else {
-        //         float chamber_pressure_pa = memory.ccc_press / 1e5;
-        //         memory.integral += chamber_pressure_pa * (time - memory.integral_past_time)/1000; // in Pa.ms
-        //         memory.integral_past_time = time;
-        //         memory.engine_total_impulse = I_SP * G * (AREA_THROAT/C_STAR) * memory.integral;
-        //     }
-        // }
+        if (memory.calculate_integral) {
+            if (memory.integral_past_time == 0) {
+                memory.integral_past_time = time;
+            } else {
+                float chamber_pressure_pa = memory.ccc_press / 1e5;
+                memory.integral += chamber_pressure_pa * (time - memory.integral_past_time)/1000; // in Pa.ms
+                memory.integral_past_time = time;
+                memory.engine_total_impulse = I_SP * G * (AREA_THROAT/C_STAR) * memory.integral;
+            }
+        }
 #endif
     }
 
