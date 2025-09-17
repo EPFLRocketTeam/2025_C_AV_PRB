@@ -274,15 +274,15 @@ void requestEvent() {
   }
   
   #ifdef DEBUG
-  Serial.print("Preparing to send response for command: ");
-  Serial.println(received_cmd);
-  if (is_resp_int) {
-    Serial.print("Response is int: ");
-    Serial.println(resp_val_int, HEX);
-  } else {
-    Serial.print("Response is float: ");
-    Serial.println(resp_val_float);
-  }
+  // Serial.print("Preparing to send response for command: ");
+  // Serial.println(received_cmd);
+  // if (is_resp_int) {
+  //   Serial.print("Response is int: ");
+  //   Serial.println(resp_val_int, HEX);
+  // } else {
+  //   Serial.print("Response is float: ");
+  //   Serial.println(resp_val_float);
+  // }
   #endif
 
   if (is_resp_int) {

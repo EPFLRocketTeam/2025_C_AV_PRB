@@ -17,7 +17,7 @@
 #include "vector"
 
 // ================= ifdef defines =================
-// #define DEBUG
+#define DEBUG
 #define TEST_WITHOUT_PRESSURE
 #define INTEGRATE_CHAMBER_PRESSURE
 // #define KULITE
@@ -52,7 +52,7 @@
 // ================= Ignition sequence timing =================
 #define PRECHILL_DURATION           200             // 200ms -> prechill duration
 #define IGNITER_DURATION            4000            // 4s -> ignite
-#define IGNITION_DELAY              200             // 200ms -> start burn
+#define IGNITION_DELAY              250             // 250ms -> start burn
 #define RAMPUP_DURATION             200             // 200ms -> pressure check
 #define BURN_DURATION               4250            // (Ignored if using ISP) 4.25s -> stop burn
 #define CUTOFF_DELAY                250             // Close ME_b valve
