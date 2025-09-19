@@ -339,23 +339,23 @@ void PRBComputer::ignition_sq()
         if (millis() - memory.time_ignition >= PRECHILL_DURATION) {
             close_valve(MO_bC);
             open_valve(IGNITER);
-            ignition_phase = BURN_START_ME;
-            memory.time_ignition = millis();
-        }
-        break;
-
-    case BURN_START_ME:
-        if (millis() - memory.time_ignition >= IGNITER_DURATION) {
-            open_valve(ME_b);
-            close_valve(IGNITER);
             ignition_phase = BURN_START_MO;
             memory.time_ignition = millis();
         }
         break;
 
     case BURN_START_MO:
-        if (millis() - memory.time_ignition >= IGNITION_DELAY) {
+        if (millis() - memory.time_ignition >= IGNITER_DURATION) {
             open_valve(MO_bC);
+            close_valve(IGNITER);
+            ignition_phase = BURN_START_ME;
+            memory.time_ignition = millis();
+        }
+        break;
+
+    case BURN_START_ME:
+        if (millis() - memory.time_ignition >= IGNITION_DELAY) {
+            open_valve(ME_b);
             ignition_phase = PRESSURE_CHECK;
             memory.time_ignition = millis();
         }
