@@ -269,6 +269,12 @@ void requestEvent() {
       break;
     }
 
+    case AV_NET_PRB_PRESSURE_CHECK: {
+      resp_val_float = memory.ccc_press;
+      is_resp_int = false; // We are sending a float response
+      break;
+    }
+
     default:
       break;
   }

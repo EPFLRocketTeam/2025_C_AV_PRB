@@ -52,6 +52,7 @@ PRBComputer::PRBComputer(PRB_FSM state_)
         memory.ccc_press_buffer[i] = 0.0;
     }
     memory.ccc_press_index = 0;
+    memory.check_press_done = false;
 }
 
 PRBComputer::~PRBComputer()
@@ -208,6 +209,8 @@ float PRBComputer::read_pressure(int sensor)
 
     endI2CCommunication();
 
+    if (press < 0) press = 0.0; // avoid negative pressures
+
     return press;
 }
 
@@ -356,45 +359,66 @@ void PRBComputer::ignition_sq()
     case BURN_START_ME:
         if (millis() - memory.time_ignition >= IGNITION_DELAY) {
             open_valve(ME_b);
-            ignition_phase = PRESSURE_CHECK;
+            // ignition_phase = PRESSURE_CHECK;
+            ignition_phase = BURN;
             memory.time_ignition = millis();
+            #ifdef INTEGRATE_CHAMBER_PRESSURE
+                memory.calculate_integral = true;
+                memory.integral_past_time = millis();
+            #endif
         }
         break;
 
-    case PRESSURE_CHECK: {
+    // case PRESSURE_CHECK: {
+    //     memory.ccc_press_buffer[memory.ccc_press_index] = memory.ccc_press; // in Pa
+    //     memory.ccc_press_index = (memory.ccc_press_index + 1) % 5;
+    //     float sum_ccc_press = 0.0;
+    //     for (int i = 0; i < 5; i++) {
+    //         sum_ccc_press += memory.ccc_press_buffer[i];
+    //     }
+    //     memory.mean_ccc_press = sum_ccc_press / 5.0;
+
+    //     float chamber_pressure_Pa = memory.ccc_press * 1e5; // Convert bar to Pa
+    //     memory.integral += chamber_pressure_Pa * (millis() - memory.integral_past_time) / 1000.0; // in Pa.s
+    //     memory.integral_past_time = millis();
+
+    //     memory.engine_total_impulse = I_SP * G * (AREA_THROAT/C_STAR) * memory.integral;
+
+    //     if (millis() - memory.time_ignition >= RAMPUP_DURATION) {
+    //         if (memory.mean_ccc_press >= RAMP_UP_CHECK_PRESSURE) {
+    //             ignition_phase = BURN;
+    //             memory.time_burn_debug = millis();
+    //             memory.time_ignition = millis();
+    //         } else {
+    //             state = ABORT;
+    //             abort_phase = ABORT_OXYDANT;
+    //             memory.time_abort = millis();
+    //         }
+    //     }
+    //     break;
+    //     }
+    
+    case BURN: {
         memory.ccc_press_buffer[memory.ccc_press_index] = memory.ccc_press; // in Pa
         memory.ccc_press_index = (memory.ccc_press_index + 1) % 5;
         float sum_ccc_press = 0.0;
         for (int i = 0; i < 5; i++) {
             sum_ccc_press += memory.ccc_press_buffer[i];
         }
-        float mean_ccc_press = sum_ccc_press / 5.0;
+        memory.mean_ccc_press = sum_ccc_press / 5.0;
 
-        if (millis() - memory.time_ignition >= RAMPUP_DURATION) {
-            if (mean_ccc_press >= RAMP_UP_CHECK_PRESSURE) {
-                ignition_phase = BURN;
-                memory.time_burn_debug = millis();
-
-                #ifdef INTEGRATE_CHAMBER_PRESSURE
-                    memory.calculate_integral = true;
-                #endif
-                memory.time_ignition = millis();
+        if (!memory.check_press_done && millis() - memory.time_ignition >= RAMPUP_DURATION) {
+            memory.check_press_done = true;
+            if (memory.mean_ccc_press >= RAMP_UP_CHECK_PRESSURE) {  
+                // continue the burn
             } else {
                 state = ABORT;
                 abort_phase = ABORT_OXYDANT;
                 memory.time_abort = millis();
             }
         }
-        break;
-        }
-    
-    case BURN: {
-#ifdef INTEGRATE_CHAMBER_PRESSURE
 
-        if (memory.integral_past_time == 0) {
-            memory.integral_past_time = millis();
-            break;
-        }
+#ifdef INTEGRATE_CHAMBER_PRESSURE
 
         float chamber_pressure_Pa = memory.ccc_press * 1e5; // Convert bar to Pa
         memory.integral += chamber_pressure_Pa * (millis() - memory.integral_past_time) / 1000.0; // in Pa.s
@@ -410,8 +434,8 @@ void PRBComputer::ignition_sq()
         if (memory.integral >= (I_TARGET * C_STAR) / (I_SP * G * AREA_THROAT) ||
             millis() - memory.time_ignition >= (MAX_BURN_TIME)) {
             ignition_phase = BURN_STOP_MO;
-            Serial.print("Total burn time: ");
-            Serial.println(millis() - memory.time_burn_debug);
+            // Serial.print("Total burn time: ");
+            // Serial.println(millis() - memory.time_burn_debug);
             memory.time_ignition = millis();
         }
 
@@ -432,6 +456,7 @@ void PRBComputer::ignition_sq()
             close_valve(MO_bC);
             ignition_phase = BURN_STOP_ME;
             memory.time_ignition = millis();
+            break;
 
         case BURN_STOP_ME:
             if (millis() - memory.time_ignition >= CUTOFF_DELAY) {
