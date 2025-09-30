@@ -424,7 +424,10 @@ void PRBComputer::ignition_sq()
         memory.integral += chamber_pressure_Pa * (millis() - memory.integral_past_time) / 1000.0; // in Pa.s
         memory.integral_past_time = millis();
 
-        memory.engine_total_impulse = I_SP * G * (AREA_THROAT/C_STAR) * memory.integral;
+        float c_star = lut_c_star(memory.ccc_press);
+        float isp = lut_isp(memory.ccc_press);
+
+        memory.engine_total_impulse = isp * G * (AREA_THROAT/c_star) * memory.integral;
 
         if (millis() - memory.time_ignition <= (MIN_BURN_TIME)) {
             break;
@@ -752,6 +755,83 @@ void PRBComputer::update(int time)
 }
 
 // =============== status LED configuration ===============
+
+static inline float lut_isp(float p_chamber_bar) {
+    
+    // Abnormal regime below 2bar
+    if(p_chamber_bar < 2){
+        return p_chamber_bar*131.80589942855545/2;
+    }
+
+    float acc = p_chamber_bar;
+    float total = 8.56762461e+01 + 2.71827391e+01*acc;
+    
+    // x^2
+    acc *= p_chamber_bar;
+    total += -2.26447560e+00*acc;
+
+    // x^3
+    acc *= p_chamber_bar;
+    total += 1.08705675e-01*acc;
+
+    // x^4
+    acc *= p_chamber_bar;
+    total += -3.07527952e-03*acc;
+
+    // x^5
+    acc *= p_chamber_bar;
+    total += 5.21721920e-05*acc;
+
+    // x^6
+    acc *= p_chamber_bar;
+    total += -5.20970485e-07*acc;
+
+    // x^7
+    acc *= p_chamber_bar;
+    total += 2.81917418e-09*acc;
+
+    // x^8
+    acc *= p_chamber_bar;
+    total += -6.37189252e-12*acc;
+    
+    return total;
+
+    return 0;
+} 
+
+static inline float lut_c_star(float p_chamber_bar) {
+        
+
+    // Abnormal regime below 2bar
+    if(p_chamber_bar < 2){
+        return p_chamber_bar*1564.6969478660676/2;
+    }
+
+    float acc = p_chamber_bar;
+    float total = 1.54575808e+03 + 1.03879748e1*acc;
+    
+    // x^2
+    acc *= p_chamber_bar;
+    total += 4.84318694e-01*acc;
+
+    // x^3
+    acc *= p_chamber_bar;
+    total += 1.28906079e-02*acc;
+
+    // x^4
+    acc *= p_chamber_bar;
+    total += -1.85995622e-04*acc;
+
+    // x^5
+    acc *= p_chamber_bar;
+    total += 1.36e-06*acc;
+
+    // x^6
+    acc *= p_chamber_bar;
+    total += -3.94216034e-09*acc;
+    
+    return total;
+} 
 
 void status_led(RGBColor color) {
     digitalWrite(RGB_RED, color.red);
