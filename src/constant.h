@@ -59,8 +59,9 @@
 #define PASSIVATION_DELAY           120000          // 120s -> max passivation
 
 // ================= Shutdown sequence timing =================
-#define PASSIVATION_FUEL_DURATION   10000           // Open ME_b valve
-#define PASSIVATION_OX_DURATION     10000           // Open MO_bC valve
+#define PASSIVATION_FUEL_DURATION      10000           // Open ME_b valve during 10s
+#define PASSIVATION_INTERLUDE_DURATION 1000            // Close ME_b valve and wait 1s
+#define PASSIVATION_OX_DURATION        10000           // Open MO_bC valve during 10s
 
 // ================= Abort sequence timing =================
 #define ABORT_PASSIVATION_DELAY 5000           // 5s -> max passivation
@@ -108,6 +109,7 @@ enum passivationStage
 {
     SLEEP,
     PASSIVATION_ETH,
+    PASSIVATION_INTERLUDE,
     PASSIVATION_LOX,
     SHUTOFF
 };

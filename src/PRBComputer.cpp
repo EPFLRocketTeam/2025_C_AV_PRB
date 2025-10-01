@@ -485,17 +485,24 @@ void PRBComputer::passivation_sq()
     switch (passivation_phase)
     {
     case PASSIVATION_ETH:
-        #ifndef VSTF_AND_COLD_FLOW
-            open_valve(ME_b);
-        #endif
-        passivation_phase = PASSIVATION_LOX;
+#ifndef VSTF_AND_COLD_FLOW
+        open_valve(ME_b);
+#endif
+        passivation_phase = PASSIVATION_INTERLUDE;
         memory.time_passivation = millis();
         break;
 
-    case PASSIVATION_LOX:
-        if (millis() - memory.time_passivation >= PASSIVATION_FUEL_DURATION)
-        {
+    case PASSIVATION_INTERLUDE:
+        if (millis() - memory.time_passivation >= PASSIVATION_FUEL_DURATION) {
             close_valve(ME_b);
+            passivation_phase = PASSIVATION_LOX;
+            memory.time_passivation = millis();
+        }
+        break;
+
+    case PASSIVATION_LOX:
+        if (millis() - memory.time_passivation >= PASSIVATION_INTERLUDE_DURATION)
+        {
             open_valve(MO_bC);
             passivation_phase = SHUTOFF;
             memory.time_passivation = millis();
