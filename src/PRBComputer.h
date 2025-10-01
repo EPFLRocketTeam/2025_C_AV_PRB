@@ -49,8 +49,9 @@ typedef struct prb_memory_t
     int integral_past_time;         // past time for integral calculation [ms]
     bool calculate_integral;        // flag to start/stop integral calculation
     bool passivation;               // flag to start/stop passivation sequence
-
+    float mean_ccc_press;           // mean CCC pressure (for pressure check) [bar]
     int time_burn_debug;            // time @ which burn debug starts [ms]
+    bool check_press_done;
 }prb_memory_t;
 
 

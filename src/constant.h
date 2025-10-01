@@ -52,10 +52,10 @@
 // ================= Ignition sequence timing =================
 #define PRECHILL_DURATION           200             // 200ms -> prechill duration
 #define IGNITER_DURATION            5000            // 4s -> ignite
-#define IGNITION_DELAY              100             // 250ms -> start burn
-#define RAMPUP_DURATION             200             // 200ms -> pressure check
+#define IGNITION_DELAY              50              // 50ms -> start burn
+#define RAMPUP_DURATION             150             // 150ms -> pressure check
 #define BURN_DURATION               4250            // (Ignored if using ISP) 4.25s -> stop burn
-#define CUTOFF_DELAY                100             // Close ME_b valve
+#define CUTOFF_DELAY                25              // Close ME_b valve
 #define PASSIVATION_DELAY           120000          // 120s -> max passivation
 
 // ================= Shutdown sequence timing =================
@@ -78,11 +78,11 @@
 #define I_SP                    250.874                             //[N.s] specific impulse
 #define AREA_THROAT             0.001364411                         //[m^2]
 #define C_STAR                  2437.277                            //[m/S]
-#define BUILD_UP_POWER          750                                 //[N.s]
-#define MIN_BURN_TIME           1750                                //[ms] -> 4.5s min time burn
-#define MAX_BURN_TIME           3000                                //[ms] -> 5.5s max time burn
+// #define BUILD_UP_POWER          750                                 //[N.s]
+#define MIN_BURN_TIME           4750                                //[ms] -> 4.75s min time burn
+#define MAX_BURN_TIME           7500                                //[ms] -> 7.5s max time burn
 
-#define BURN_IMPULSE          14008                               //[N.s] flight impulse
+#define BURN_IMPULSE            35020                               //[N.s] flight impulse
 // #define CUTOFF_IMPULSE          374.292                             //[N.s] cutoff impulse
 #define I_TARGET                (BURN_IMPULSE)   //[N.s] target impulse
 
@@ -97,7 +97,7 @@ enum ignitionStage
     IGNITION,
     BURN_START_ME,
     BURN_START_MO,
-    PRESSURE_CHECK,
+    // PRESSURE_CHECK,
     BURN,
     BURN_STOP_MO,
     BURN_STOP_ME,
