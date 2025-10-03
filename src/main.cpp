@@ -84,9 +84,6 @@ void receiveEvent(int numBytes) {
         break;
       }
 
-      case AV_NET_PRB_WAKE_UP:
-        break;
-
       case AV_NET_PRB_CLEAR_TO_IGNITE:
         // Serial.println("Received AV_NET_PRB_CLEAR_TO_IGNITE command");
         if (received_buff[0] == AV_NET_CMD_ON) {
@@ -206,10 +203,6 @@ void requestEvent() {
   prb_memory_t memory = computer.get_memory();
 
   switch (received_cmd) {
-    case AV_NET_PRB_IS_WOKEN_UP:
-      resp_val_int = AV_NET_CMD_ON;
-      is_resp_int = true;
-      break;
 
     case AV_NET_PRB_FSM_PRB:
       resp_val_int = computer.get_state();
@@ -221,7 +214,7 @@ void requestEvent() {
       is_resp_int = false; // We are sending a float response
       break;
 
-    case AV_NET_PRB_T_OIN:
+    case AV_NET_PRB_T_FLS_0:
       resp_val_float = memory.oin_temp;
       is_resp_int = false; // We are sending a float response
       break;
@@ -246,7 +239,7 @@ void requestEvent() {
       is_resp_int = false; // We are sending a float response
       break;
 
-    case AV_NET_PRB_T_EIN_PT1000:
+    case AV_NET_PRB_T_FLS_10:
       resp_val_float = memory.ein_temp_pt1000;
       is_resp_int = false; // We are sending a float response
       break;
