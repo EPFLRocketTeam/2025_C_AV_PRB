@@ -53,10 +53,10 @@
 #define PRECHILL_DURATION           200             // 200ms -> prechill duration
 #define IGNITER_DURATION            5000            // 4s -> ignite
 #define IGNITION_DELAY              50              // 50ms -> start burn
-#define RAMPUP_DURATION             150             // 150ms -> pressure check
+#define RAMPUP_DURATION             1000             // pressure check
 #define BURN_DURATION               4250            // (Ignored if using ISP) 4.25s -> stop burn
 #define CUTOFF_DELAY                25              // Close ME_b valve
-#define PASSIVATION_DELAY           120000          // 120s -> max passivation
+#define PASSIVATION_DELAY           41000          // No COM delay passivation
 
 // ================= Shutdown sequence timing =================
 #define PASSIVATION_FUEL_DURATION      10000           // Open ME_b valve during 10s
@@ -75,14 +75,14 @@
 
 // ================= Engine parameters =================
 #define G                       9.80665                             //[m/s^2]
-#define I_SP                    250.874                             //[N.s] specific impulse
+#define I_SP                    169                             //[N.s] specific impulse
 #define AREA_THROAT             0.001364411                         //[m^2]
-#define C_STAR                  2437.277                            //[m/S]
+#define C_STAR                  1136                            //[m/S]
 // #define BUILD_UP_POWER          750                                 //[N.s]
-#define MIN_BURN_TIME           4750                                //[ms] -> 4.75s min time burn
-#define MAX_BURN_TIME           7500                                //[ms] -> 7.5s max time burn
+#define MIN_BURN_TIME           5882                                //[ms] -> min time burn
+#define MAX_BURN_TIME           7307                                //[ms] -> max time burn
 
-#define BURN_IMPULSE            35020                               //[N.s] flight impulse
+#define BURN_IMPULSE            32500                               //[N.s] flight impulse
 // #define CUTOFF_IMPULSE          374.292                             //[N.s] cutoff impulse
 #define I_TARGET                (BURN_IMPULSE)   //[N.s] target impulse
 
