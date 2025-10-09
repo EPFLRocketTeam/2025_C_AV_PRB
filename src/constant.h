@@ -21,7 +21,7 @@
 #define TEST_WITHOUT_PRESSURE
 #define INTEGRATE_CHAMBER_PRESSURE
 // #define KULITE
-#define VSTF_AND_COLD_FLOW
+// #define VSTF_AND_COLD_FLOW
 
 // ================ pin configuration =================
 #define ME_b        37
