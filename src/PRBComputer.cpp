@@ -53,6 +53,7 @@ PRBComputer::PRBComputer(PRB_FSM state_)
     }
     memory.ccc_press_index = 0;
     memory.check_press_done = false;
+    memory.did_passivation_abort = false;
 }
 
 PRBComputer::~PRBComputer()
@@ -579,6 +580,8 @@ void PRBComputer::abort_sq()
             if (millis() - memory.time_abort >= CUTOFF_DELAY)
             {
                 close_valve(ME_b);
+                abort_phase = WAIT_FOR_PASSIVATION_ABORT;
+                memory.time_abort = millis();
             }
             break;
 
@@ -586,9 +589,12 @@ void PRBComputer::abort_sq()
             if (millis() - memory.time_abort >= ABORT_PASSIVATION_DELAY)
             {
                 if (memory.passivation) {
-                    state = PASSIVATION_SQ;
-                    passivation_phase = PASSIVATION_ETH;
-                    memory.time_passivation = millis();
+                    if (!memory.did_passivation_abort) {
+                        memory.did_passivation_abort = true;
+                        passivation_phase = PASSIVATION_ETH;
+                        memory.time_passivation = millis();
+                    } 
+                    passivation_sq();
                 }
             }
             break;
