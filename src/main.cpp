@@ -100,32 +100,34 @@ void receiveEvent(int numBytes) {
       }
 
       case AV_NET_PRB_VALVES_STATE: {
-        status_led(PURPLE);
-        // Serial.println("Received AV_NET_PRB_VALVES_STATE command");
-        uint8_t valves_ME_State = received_buff[0];
-        uint8_t valves_MO_State = received_buff[1];
+        if (computer.get_state() == IDLE || computer.get_state() == ABORT){
+          status_led(PURPLE);
+          // Serial.println("Received AV_NET_PRB_VALVES_STATE command");
+          uint8_t valves_ME_State = received_buff[0];
+          uint8_t valves_MO_State = received_buff[1];
 
-        if (valves_ME_State == AV_NET_CMD_ON) {
-          // Serial.println("Opening ME_b valve");
-          computer.open_valve(ME_b);
-          status_led(GREEN);
-        } else if (valves_ME_State == AV_NET_CMD_OFF) {
-          // Serial.println("Closing ME_b valve");
-          computer.close_valve(ME_b);
-        } else {
-          Serial.print("Unknown state for ME_b valve: ");
-          Serial.println(valves_ME_State, HEX);
-        }
+          if (valves_ME_State == AV_NET_CMD_ON) {
+            // Serial.println("Opening ME_b valve");
+            computer.open_valve(ME_b);
+            status_led(GREEN);
+          } else if (valves_ME_State == AV_NET_CMD_OFF) {
+            // Serial.println("Closing ME_b valve");
+            computer.close_valve(ME_b);
+          } else {
+            Serial.print("Unknown state for ME_b valve: ");
+            Serial.println(valves_ME_State, HEX);
+          }
 
-        if (valves_MO_State == AV_NET_CMD_ON) {
-          // Serial.println("Opening MO_bC valve");
-          computer.open_valve(MO_bC);
-        } else if (valves_MO_State == AV_NET_CMD_OFF) {
-          // Serial.println("Closing MO_bC valve");
-          computer.close_valve(MO_bC);
-        } else {
-          Serial.print("Unknown state for MO_bC valve: ");
-          Serial.println(valves_MO_State, HEX);
+          if (valves_MO_State == AV_NET_CMD_ON) {
+            // Serial.println("Opening MO_bC valve");
+            computer.open_valve(MO_bC);
+          } else if (valves_MO_State == AV_NET_CMD_OFF) {
+            // Serial.println("Closing MO_bC valve");
+            computer.close_valve(MO_bC);
+          } else {
+            Serial.print("Unknown state for MO_bC valve: ");
+            Serial.println(valves_MO_State, HEX);
+          }
         }
         break;
       }
