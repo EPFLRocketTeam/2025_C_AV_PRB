@@ -4,6 +4,8 @@
 #include "PRBComputer.h"
 #include "wiring.h"
 
+#define VALVE_HANG_MAX 500 //ms
+
 PRBComputer computer(IDLE);
 
 // ================== I2C communication variables =================
@@ -12,6 +14,8 @@ volatile uint8_t received_cmd = 0;
 volatile float resp_val_float = 0.0;
 volatile uint32_t resp_val_int = 0x00;
 volatile bool is_resp_int = false;
+volatile uint32_t timeStampME = 0;
+volatile uint32_t timeStampM0 = 0;
 
 // ================= I2C event handlers =================
 
@@ -105,12 +109,21 @@ void receiveEvent(int numBytes) {
           // Serial.println("Received AV_NET_PRB_VALVES_STATE command");
           uint8_t valves_ME_State = received_buff[0];
           uint8_t valves_MO_State = received_buff[1];
+          uint32_t currentTime = millis();
 
           if (valves_ME_State == AV_NET_CMD_ON) {
             // Serial.println("Opening ME_b valve");
+           
+            if( currentTime - timeStampME < VALVE_HANG_MAX){
             computer.open_valve(ME_b);
             status_led(GREEN);
+            timeStampME = 0;
+            }else{
+              timeStampME = currentTime;
+            }
+            
           } else if (valves_ME_State == AV_NET_CMD_OFF) {
+            
             // Serial.println("Closing ME_b valve");
             computer.close_valve(ME_b);
           } else {
@@ -120,7 +133,13 @@ void receiveEvent(int numBytes) {
 
           if (valves_MO_State == AV_NET_CMD_ON) {
             // Serial.println("Opening MO_bC valve");
-            computer.open_valve(MO_bC);
+            if(currentTime -timeStampM0 < VALVE_HANG_MAX){
+              computer.open_valve(MO_bC);
+              timeStampM0=0;
+            }else{
+              timeStampM0 = currentTime;
+            }
+            
           } else if (valves_MO_State == AV_NET_CMD_OFF) {
             // Serial.println("Closing MO_bC valve");
             computer.close_valve(MO_bC);
